@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ashroy Architects & Engineers – Financial Dashboard</title>
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary: #1a56db;         /* Indigo */
+      --primary-light: #e1e8ff;
+      --secondary: #0e9f6e;       /* Green */
+      --secondary-light: #def7ec;
+      --accent: #9061f9;          /* Purple */
+      --accent-light: #edebfe;
+      --gray: #6b7280;
+      --gray-light: #f3f4f6;
+      --dark: #111827;
+    }
+    body {
+      font-family: 'Hind Siliguri', sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #e6f0fa 100%);
+      color: var(--dark);
+      min-height: 100vh;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+    }
+    .nav-link {
+      transition: all 0.3s ease;
+      position: relative;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 500;
+      color: var(--dark);
+    }
+    .nav-link.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .nav-link:hover:not(.active) {
+      background: var(--gray-light);
+    }
+    .kpi-card {
+      transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      overflow: hidden;
+    }
+    .kpi-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 16px;
+    }
+    .icon-wrapper.received { background: var(--secondary-light); color: var(--secondary); }
+    .icon-wrapper.paid     { background: #fde8e8;        color: #f05252; }
+    .icon-wrapper.cash     { background: var(--primary-light); color: var(--primary); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      box-shadow: 0 4px 6px rgba(26, 86, 219, 0.2);
+      transition: all 0.3s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(26, 86, 219, 0.3);
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--secondary) 0%, #0a7c53 100%);
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      box-shadow: 0 4px 6px rgba(14, 159, 110, 0.2);
+      transition: all 0.3s;
+    }
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(14, 159, 110, 0.3);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #f05252 0%, #c53030 100%);
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      box-shadow: 0 4px 6px rgba(240, 82, 82, 0.2);
+      transition: all 0.3s;
+    }
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(240, 82, 82, 0.3);
+    }
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 350px;
+      max-height: 50vh;
+    }
+    @media (min-width: 768px) {
+      .chart-container { height: 400px; }
+    }
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .table-container {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    th {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    th:first-child { border-top-left-radius: 12px; }
+    th:last-child  { border-top-right-radius: 12px; }
+    tr:nth-child(even) { background-color: var(--gray-light); }
+    .form-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    .input-field {
+      background: var(--gray-light);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .input-field:focus {
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.1);
+    }
+    .notification {
+      animation: fadeInOut 3s ease-in-out;
+    }
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0; transform: translateY(10px); }
+      10%, 90% { opacity: 1; transform: translateY(0); }
+    }
+    .tab-content {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .action-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin: 0 2px;
+    }
+    .action-btn.edit {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .action-btn.delete {
+      background: #fde8e8;
+      color: #f05252;
+    }
+    .search-container {
+      position: relative;
+    }
+    .search-container .fa-search {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+    }
+    .search-container input {
+      padding-left: 36px;
+    }
+    .export-btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+    .chart-mode-container {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .chart-mode-btn {
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--gray-light);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chart-mode-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+    .average-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .totals-row {
+      background: var(--primary-light) !important;
+      font-weight: 600;
+    }
+    .totals-row td {
+      padding: 12px 24px;
+    }
+    .datalist-container {
+      position: relative;
+    }
+    .datalist-container input {
+      width: 100%;
+    }
+    .datalist-container datalist {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 0 0 8px 8px;
+      z-index: 10;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .datalist-container option {
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+    .datalist-container option:hover {
+      background: var(--primary-light);
+    }
+  </style>
+</head>
+<body class="antialiased min-h-screen">
+  <div class="container mx-auto px-4 py-6 md:px-8 md:py-8 max-w-7xl">
+
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <div class="flex flex-col items-center md:flex-row md:justify-center mb-4">
+        <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mr-4">
+          <i class="fas fa-building text-white text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Ashroy Architects &amp; Engineers</h1>
+          <p class="text-lg text-gray-600 mt-1">Financial Management Dashboard</p>
+        </div>
+      </div>
+      <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-1 w-24 mx-auto rounded-full"></div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="mb-8">
+      <div class="glass-card p-1 inline-flex rounded-xl">
+        <ul class="flex flex-wrap text-md font-medium">
+          <li>
+            <a href="#" id="nav-dashboard" class="nav-link active inline-flex items-center">
+              <i class="fas fa-chart-line mr-2"></i> Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="#" id="nav-projects" class="nav-link inline-flex items-center ml-2 md:ml-4">
+              <i class="fas fa-folder-open mr-2"></i> Project Reports
+            </a>
+          </li>
+          <li>
+            <a href="#" id="nav-entry" class="nav-link inline-flex items-center ml-2 md:ml-4">
+              <i class="fas fa-plus-circle mr-2"></i> New Entry
+            </a>
+          </li>
+          <li>
+            <a href="#" id="nav-report" class="nav-link inline-flex items-center ml-2 md:ml-4">
+              <i class="fas fa-file-invoice mr-2"></i> Transaction Report
+            </a>
+          </li>
+          <li>
+            <a href="#" id="nav-export" class="nav-link inline-flex items-center ml-2 md:ml-4">
+              <i class="fas fa-download mr-2"></i> Export Data
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="tab-content">
+
+      <!-- Dashboard Section -->
+      <section id="dashboard-section">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl md:text-3xl font-bold mb-2 text-gray-800">Summary</h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">Here is a quick overview of your business’s financial health.</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="dashboard-grid mb-8">
+          <div class="kpi-card received bg-white p-6 rounded-xl stat-card flex items-center">
+            <div class="icon-wrapper received">
+              <i class="fas fa-arrow-down text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-md font-semibold text-gray-500 mb-1">Total Received</h3>
+              <p id="total-received" class="text-3xl font-bold text-green-600">৳0</p>
+            </div>
+          </div>
+          <div class="kpi-card paid bg-white p-6 rounded-xl stat-card flex items-center">
+            <div class="icon-wrapper paid">
+              <i class="fas fa-arrow-up text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-md font-semibold text-gray-500 mb-1">Total Paid</h3>
+              <p id="total-paid" class="text-3xl font-bold text-red-500">৳0</p>
+            </div>
+          </div>
+          <div class="kpi-card cash bg-white p-6 rounded-xl stat-card flex items-center">
+            <div class="icon-wrapper cash">
+              <i class="fas fa-wallet text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-md font-semibold text-gray-500 mb-1">Cash on Hand</h3>
+              <p id="cash-in-hand" class="text-3xl font-bold text-blue-600">৳0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Chart -->
+        <div class="glass-card p-4 md:p-6 rounded-xl mb-8">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <div>
+              <h3 class="text-xl md:text-2xl font-bold text-gray-800">Monthly Revenue</h3>
+              <p class="text-gray-600 mt-1 max-w-2xl">This chart shows your monthly income, expenses, and profit for the selected year.</p>
+            </div>
+            <div class="mt-4 md:mt-0">
+              <select id="year-filter" class="bg-gray-100 border-0 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                <!-- Options populated by JS -->
+              </select>
+            </div>
+          </div>
+          
+          <!-- Chart Mode Selector -->
+          <div class="chart-mode-container mb-4">
+            <div class="chart-mode-btn active" data-mode="line">Line</div>
+            <div class="chart-mode-btn" data-mode="bar">Bar</div>
+            <div class="chart-mode-btn" data-mode="stacked">Stacked</div>
+          </div>
+          
+          <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+          </div>
+          
+          <!-- Monthly Averages -->
+          <div class="dashboard-grid mt-6">
+            <div class="average-card">
+              <h4 class="text-md font-semibold text-gray-500 mb-1">Avg. Monthly Received</h4>
+              <p id="avg-received" class="text-xl font-bold text-green-600">৳0</p>
+            </div>
+            <div class="average-card">
+              <h4 class="text-md font-semibold text-gray-500 mb-1">Avg. Monthly Paid</h4>
+              <p id="avg-paid" class="text-xl font-bold text-red-500">৳0</p>
+            </div>
+            <div class="average-card">
+              <h4 class="text-md font-semibold text-gray-500 mb-1">Avg. Monthly Profit</h4>
+              <p id="avg-profit" class="text-xl font-bold text-blue-600">৳0</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Project Reports Section -->
+      <section id="projects-section" class="hidden">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl md:text-3xl font-bold mb-2 text-gray-800">Project Reports</h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">Select a project below to view its financial report.</p>
+        </div>
+
+        <div class="glass-card p-4 md:p-6 rounded-xl mb-8">
+          <div class="mb-6">
+            <div class="flex items-center mb-2">
+              <i class="fas fa-search text-blue-500 mr-2"></i>
+              <label for="project-select" class="block text-md font-medium text-gray-700">Search Project</label>
+            </div>
+            <div class="datalist-container">
+              <input type="text" id="project-search" class="input-field w-full p-3" placeholder="Type project name to search..." list="project-list">
+              <datalist id="project-list">
+                <!-- Options populated by JS -->
+              </datalist>
+            </div>
+          </div>
+
+          <div id="project-details" class="hidden mt-8">
+            <!-- Project Title -->
+            <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center">
+                <i class="fas fa-folder text-blue-500 text-xl mr-3"></i>
+                <h3 class="text-xl md:text-2xl font-bold text-gray-800" id="project-title"></h3>
+              </div>
+              <div class="export-btn-group">
+                <button id="project-export-csv" class="btn-primary px-4 py-2 text-sm">
+                  <i class="fas fa-file-csv mr-1"></i> CSV
+                </button>
+                <button id="project-export-pdf" class="btn-primary px-4 py-2 text-sm">
+                  <i class="fas fa-file-pdf mr-1"></i> PDF
+                </button>
+              </div>
+            </div>
+
+            <!-- Project KPIs -->
+            <div class="dashboard-grid mb-8">
+              <div class="stat-card p-6">
+                <h4 class="text-md font-semibold text-gray-500 mb-2">Project Total Received</h4>
+                <p id="project-total-received" class="text-3xl font-bold text-green-600">৳0</p>
+              </div>
+              <div class="stat-card p-6">
+                <h4 class="text-md font-semibold text-gray-500 mb-2">Project Total Paid</h4>
+                <p id="project-total-paid" class="text-3xl font-bold text-red-500">৳0</p>
+              </div>
+              <div class="stat-card p-6">
+                <h4 class="text-md font-semibold text-gray-500 mb-2">Project Cash on Hand</h4>
+                <p id="project-cash-in-hand" class="text-3xl font-bold text-blue-600">৳0</p>
+              </div>
+            </div>
+
+            <!-- Transactions Table -->
+            <div class="mb-4 flex items-center">
+              <i class="fas fa-table text-blue-500 mr-2"></i>
+              <h3 class="text-xl font-bold text-gray-800">Transactions</h3>
+            </div>
+            <div class="table-container">
+              <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase">
+                  <tr>
+                    <th class="py-3 px-6">Date</th>
+                    <th class="py-3 px-6">Description</th>
+                    <th class="py-3 px-6">Payment Type</th>
+                    <th class="py-3 px-6">Paid To</th>
+                    <th class="py-3 px-6 text-right">Received</th>
+                    <th class="py-3 px-6 text-right">Paid</th>
+                    <th class="py-3 px-6 text-right">Cash</th>
+                    <th class="py-3 px-6 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="project-transactions-body" class="bg-white">
+                  <!-- Rows populated by JS -->
+                </tbody>
+                <tfoot id="project-totals-row" class="font-semibold bg-gray-50">
+                  <!-- Totals row populated by JS -->
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- New Entry Section -->
+      <section id="entry-section" class="hidden">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl md:text-3xl font-bold mb-2 text-gray-800">Add New Transaction</h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">Use this form to add a transaction for an existing or new project.</p>
+        </div>
+
+        <div class="form-card max-w-4xl mx-auto p-6 md:p-8">
+          <form id="entry-form">
+            <input type="hidden" id="edit-id" value="">
+            <div class="grid md:grid-cols-2 gap-6">
+              <!-- Date -->
+              <div>
+                <label for="entry-date" class="block mb-2 text-sm font-medium text-gray-700">Date</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                    <i class="fas fa-calendar"></i>
+                  </div>
+                  <input type="date" id="entry-date" class="input-field w-full pl-10 p-3" required>
+                </div>
+              </div>
+              <!-- Project Type -->
+              <div>
+                <label for="entry-project-type" class="block mb-2 text-sm font-medium text-gray-700">Project Type</label>
+                <select id="entry-project-type" class="input-field w-full p-3">
+                  <option value="existing">Existing Project</option>
+                  <option value="new">New Project</option>
+                </select>
+              </div>
+              <!-- Existing Project Selector -->
+              <div id="existing-project-container">
+                <label for="entry-project-select" class="block mb-2 text-sm font-medium text-gray-700">Select Project</label>
+                <div class="datalist-container">
+                  <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                      <i class="fas fa-folder"></i>
+                    </div>
+                    <input type="text" id="entry-project-select" class="input-field w-full pl-10 p-3" list="entry-project-list" placeholder="Type project name or select">
+                  </div>
+                  <datalist id="entry-project-list">
+                    <!-- Options populated by JS -->
+                  </datalist>
+                </div>
+              </div>
+              <!-- New Project Name -->
+              <div id="new-project-container" class="hidden">
+                <label for="entry-project-new" class="block mb-2 text-sm font-medium text-gray-700">New Project Name</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                    <i class="fas fa-plus"></i>
+                  </div>
+                  <input type="text" id="entry-project-new" class="input-field w-full pl-10 p-3"
+                         placeholder="e.g. 45_New Project">
+                </div>
+              </div>
+              <!-- Payment Type -->
+              <div>
+                <label for="entry-payment-type" class="block mb-2 text-sm font-medium text-gray-700">Payment Type</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                    <i class="fas fa-credit-card"></i>
+                  </div>
+                  <select id="entry-payment-type" class="input-field w-full pl-10 p-3" required>
+                    <option value="Design Bill">Design Bill</option>
+                    <option value="Site Visit">Site Visit</option>
+                    <option value="Material Cost">Material Cost</option>
+                    <option value="Labor Cost">Labor Cost</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Paid To -->
+              <div>
+                <label for="entry-paid-to" class="block mb-2 text-sm font-medium text-gray-700">Paid To (Optional)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                    <i class="fas fa-user"></i>
+                  </div>
+                  <input type="text" id="entry-paid-to" class="input-field w-full pl-10 p-3" placeholder="Enter recipient name">
+                </div>
+              </div>
+              <!-- Description (full width) -->
+              <div class="md:col-span-2">
+                <label for="entry-description" class="block mb-2 text-sm font-medium text-gray-700">Description</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                    <i class="fas fa-file-alt"></i>
+                  </div>
+                  <input type="text" id="entry-description" class="input-field w-full pl-10 p-3"
+                         placeholder="Enter a brief description of the transaction">
+                </div>
+              </div>
+              <!-- Received Amount -->
+              <div>
+                <label for="entry-received" class="block mb-2 text-sm font-medium text-gray-700">Received (BDT)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                    <i class="fas fa-arrow-down"></i>
+                  </div>
+                  <input type="number" id="entry-received" class="input-field w-full pl-10 p-3" value="0" min="0">
+                </div>
+              </div>
+              <!-- Paid Amount -->
+              <div>
+                <label for="entry-paid" class="block mb-2 text-sm font-medium text-gray-700">Paid (BDT)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                    <i class="fas fa-arrow-up"></i>
+                  </div>
+                  <input type="number" id="entry-paid" class="input-field w-full pl-10 p-3" value="0" min="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div id="submit-area" class="mt-8 text-center">
+              <button type="submit" class="btn-primary font-medium text-lg px-8 py-3 inline-flex items-center">
+                <i class="fas fa-paper-plane mr-2"></i> Submit Entry
+              </button>
+            </div>
+            
+            <!-- Update Button -->
+            <div id="update-area" class="hidden mt-8 text-center">
+              <button type="submit" class="btn-primary font-medium text-lg px-8 py-3 inline-flex items-center mr-4">
+                <i class="fas fa-save mr-2"></i> Update
+              </button>
+              <button type="button" id="cancel-edit" class="btn-secondary font-medium text-lg px-8 py-3 inline-flex items-center">
+                <i class="fas fa-times mr-2"></i> Cancel
+              </button>
+            </div>
+          </form>
+
+          <!-- Success Notification -->
+          <div id="success-message"
+               class="notification hidden mt-6 p-4 text-sm text-green-700 bg-green-100 rounded-lg text-center"
+               role="alert">
+            <span class="font-medium">Success!</span> New transaction added.
+          </div>
+        </div>
+      </section>
+
+      <!-- Transaction Report Section -->
+      <section id="report-section" class="hidden">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl md:text-3xl font-bold mb-2 text-gray-800">Transaction Report</h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">Generate a report of transactions between two dates.</p>
+        </div>
+
+        <div class="glass-card p-4 md:p-6 rounded-xl mb-8">
+          <div class="grid md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label for="report-from" class="block mb-2 text-sm font-medium text-gray-700">From Date</label>
+              <input type="date" id="report-from" class="input-field w-full p-3">
+            </div>
+            <div>
+              <label for="report-to" class="block mb-2 text-sm font-medium text-gray-700">To Date</label>
+              <input type="date" id="report-to" class="input-field w-full p-3">
+            </div>
+          </div>
+          <div class="text-center">
+            <button id="generate-report" class="btn-primary font-medium px-8 py-3 inline-flex items-center">
+              <i class="fas fa-play-circle mr-2"></i> Generate Report
+            </button>
+          </div>
+
+          <div id="report-results" class="mt-8 hidden">
+            <div class="mb-4 flex items-center justify-between">
+              <div class="flex items-center">
+                <i class="fas fa-table text-blue-500 mr-2"></i>
+                <h3 class="text-xl font-bold text-gray-800">Transactions</h3>
+              </div>
+              <div>
+                <button id="download-csv" class="btn-primary text-sm px-4 py-2 mr-2">
+                  <i class="fas fa-file-csv mr-1"></i> CSV
+                </button>
+                <button id="download-pdf" class="btn-primary text-sm px-4 py-2">
+                  <i class="fas fa-file-pdf mr-1"></i> PDF
+                </button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase">
+                  <tr>
+                    <th class="py-3 px-6">Date</th>
+                    <th class="py-3 px-6">Description</th>
+                    <th class="py-3 px-6">Payment Type</th>
+                    <th class="py-3 px-6">Paid To</th>
+                    <th class="py-3 px-6 text-right">Received</th>
+                    <th class="py-3 px-6 text-right">Paid</th>
+                    <th class="py-3 px-6 text-right">Cash</th>
+                  </tr>
+                </thead>
+                <tbody id="report-transactions-body" class="bg-white">
+                  <!-- Rows populated by JS -->
+                </tbody>
+                <tfoot id="report-totals-row" class="font-semibold bg-gray-50">
+                  <!-- Totals row populated by JS -->
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Export Data Section -->
+      <section id="export-section" class="hidden">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl md:text-3xl font-bold mb-2 text-gray-800">Export Data</h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">Download all financial data in CSV or PDF format.</p>
+        </div>
+
+        <div class="glass-card p-6 md:p-8 rounded-xl max-w-3xl mx-auto">
+          <div class="text-center">
+            <i class="fas fa-download text-blue-500 text-4xl mb-6"></i>
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Download Complete Financial Data</h3>
+            <p class="text-gray-600 mb-8">Export all transactions and project data for record keeping or further analysis.</p>
+            
+            <div class="flex justify-center gap-6">
+              <button id="export-all-csv" class="btn-primary px-6 py-3 text-lg inline-flex items-center">
+                <i class="fas fa-file-csv mr-2"></i> Export CSV
+              </button>
+              <button id="export-all-pdf" class="btn-secondary px-6 py-3 text-lg inline-flex items-center">
+                <i class="fas fa-file-pdf mr-2"></i> Export PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center mt-12 pt-8 border-t border-gray-200">
+      <div class="flex items-center justify-center mb-4">
+        <div class="h-1 w-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"></div>
+      </div>
+      <p class="text-gray-500">&copy; <span id="current-year"></span> Ashroy Architects & Engineers. All rights reserved.</p>
+    </footer>
+
+  </div> <!-- /container -->
+
+  <!-- Scripts -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async function () {
+      // Initialize Supabase
+      const SUPABASE_URL = 'https://fosbmomuhezvexcrkrke.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvc2Jtb211aGV6dmV4Y3JrcmtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NDIxNDUsImV4cCI6MjA2NjQxODE0NX0.XaU9i04LRkkTBW8QAvNVHkx-mIeypTdnGBGInq3mUb4';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      
+      let transactions = [];
+      let currentReportData = [];
+      let currentProjectData = [];
+
+      const monthMap = {
+        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3,
+        'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7,
+        'Sep': 8, 'Oct': 9, 'Nov': 10,'Dec': 11
+      };
+      
+      // Format currency values
+      function formatCurrency(amount, withSymbol = true) {
+        if (withSymbol) {
+          return `৳${new Intl.NumberFormat('en-US').format(amount)}`;
+        }
+        return new Intl.NumberFormat('en-US').format(amount);
+      }
+      
+      // Format dates
+      function formatDate(date) {
+        if (!date || !(date instanceof Date)) return '';
+        return new Intl.DateTimeFormat('en-GB', { day:'2-digit', month:'short', year:'numeric' }).format(date);
+      }
+
+      // Update KPIs
+      function updateKPIs() {
+        const totalRec = transactions.reduce((s,t)=>s+t.received, 0);
+        const totalPaid= transactions.reduce((s,t)=>s+t.paid,    0);
+        const cash     = totalRec - totalPaid;
+        document.getElementById('total-received').textContent = formatCurrency(totalRec);
+        document.getElementById('total-paid').textContent     = formatCurrency(totalPaid);
+        document.getElementById('cash-in-hand').textContent   = formatCurrency(cash);
+      }
+
+      // Load transactions from Supabase
+      async function loadTransactions() {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('date', { ascending: true });
+
+        if (error) {
+          console.error('Error loading transactions:', error);
+          return [];
+        }
+
+        return data.map(t => ({
+          id: t.id,
+          date: new Date(t.date),
+          description: t.description,
+          type: t.type,
+          paidTo: t.paid_to,
+          received: t.received,
+          paid: t.paid,
+          cashInHand: t.cash_in_hand
+        }));
+      }
+
+      // Populate year filter
+      function populateYearFilter() {
+        const yearFilter = document.getElementById('year-filter');
+        const years = [...new Set(transactions.map(t=>t.date.getFullYear()))].sort((a,b)=>b-a);
+        yearFilter.innerHTML = years.map(y => `<option value="${y}" ${y === new Date().getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
+        yearFilter.addEventListener('change', updateChart);
+      }
+
+      let revenueChart;
+      function updateChart() {
+        const selYear = +document.getElementById('year-filter').value;
+        const monthlyRec = Array(12).fill(0), monthlyPaid = Array(12).fill(0);
+        transactions.forEach(t => {
+          if (t.date.getFullYear() === selYear) {
+            const m = t.date.getMonth();
+            monthlyRec[m] += t.received;
+            monthlyPaid[m] += t.paid;
+          }
+        });
+        
+        const profitData = monthlyRec.map((r,i) => r - monthlyPaid[i]);
+        const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        
+        // Calculate averages
+        const avgRec = monthlyRec.reduce((a,b) => a+b, 0) / 12;
+        const avgPaid = monthlyPaid.reduce((a,b) => a+b, 0) / 12;
+        const avgProfit = profitData.reduce((a,b) => a+b, 0) / 12;
+        
+        document.getElementById('avg-received').textContent = formatCurrency(avgRec);
+        document.getElementById('avg-paid').textContent = formatCurrency(avgPaid);
+        document.getElementById('avg-profit').textContent = formatCurrency(avgProfit);
+        
+        // Get chart mode
+        const mode = document.querySelector('.chart-mode-btn.active').dataset.mode;
+        
+        const data = {
+          labels,
+          datasets: []
+        };
+        
+        if (mode === 'line') {
+          data.datasets = [
+            {
+              label: 'Total Received',
+              data: monthlyRec,
+              borderColor: 'var(--secondary)',
+              backgroundColor: 'rgba(14,159,110,0.1)',
+              borderWidth: 3, tension: 0.3,
+              pointBackgroundColor: '#fff', pointBorderWidth: 2,
+            },
+            {
+              label: 'Total Paid',
+              data: monthlyPaid,
+              borderColor: '#f05252',
+              backgroundColor: 'rgba(240,82,82,0.1)',
+              borderWidth: 3, tension: 0.3,
+              pointBackgroundColor: '#fff', pointBorderWidth: 2,
+            },
+            {
+              label: 'Profit',
+              data: profitData,
+              borderColor: 'var(--primary)',
+              backgroundColor: 'rgba(26,86,219,0.1)',
+              borderDash: [5,5],
+              borderWidth: 3, tension: 0.3,
+              pointBackgroundColor: '#fff', pointBorderWidth: 2,
+            }
+          ];
+        } else if (mode === 'bar') {
+          data.datasets = [
+            {
+              label: 'Total Received',
+              data: monthlyRec,
+              backgroundColor: 'var(--secondary)',
+              borderColor: 'var(--secondary)',
+              borderWidth: 1,
+            },
+            {
+              label: 'Total Paid',
+              data: monthlyPaid,
+              backgroundColor: '#f05252',
+              borderColor: '#f05252',
+              borderWidth: 1,
+            },
+            {
+              label: 'Profit',
+              data: profitData,
+              backgroundColor: 'var(--primary)',
+              borderColor: 'var(--primary)',
+              borderWidth: 1,
+            }
+          ];
+        } else if (mode === 'stacked') {
+          data.datasets = [
+            {
+              label: 'Total Received',
+              data: monthlyRec,
+              backgroundColor: 'var(--secondary)',
+              borderColor: 'var(--secondary)',
+              borderWidth: 1,
+            },
+            {
+              label: 'Total Paid',
+              data: monthlyPaid,
+              backgroundColor: '#f05252',
+              borderColor: '#f05252',
+              borderWidth: 1,
+            }
+          ];
+        }
+        
+        const cfg = {
+          type: mode === 'line' ? 'line' : 'bar',
+          data: data,
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(0,0,0,0.03)' },
+                ticks: { callback: val => formatCurrency(val) },
+                stacked: mode === 'stacked'
+              },
+              x: { 
+                grid: { display: false },
+                stacked: mode === 'stacked'
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: { usePointStyle: true, padding: 20, font: { size: 14 } }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(17,24,39,0.9)',
+                titleFont: { size: 14 }, bodyFont: { size: 14 },
+                callbacks: {
+                  label: ctx => {
+                    let label = ctx.dataset.label || '';
+                    if (label) label += ': ';
+                    if (ctx.parsed.y !== null) {
+                      label += formatCurrency(ctx.parsed.y);
+                    }
+                    return label;
+                  }
+                }
+              }
+            }
+          }
+        };
+        
+        if (revenueChart) revenueChart.destroy();
+        revenueChart = new Chart(document.getElementById('revenueChart'), cfg);
+      }
+
+      // Populate project selectors
+      function populateProjectSelectors() {
+        const names = [...new Set(transactions.map(t => t.description))].sort();
+        
+        // Populate project list for search
+        const projectList = document.getElementById('project-list');
+        projectList.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+        
+        // Populate entry project list
+        const entryProjectList = document.getElementById('entry-project-list');
+        entryProjectList.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+      }
+
+      // Show project details
+      function showProjectDetails(name) {
+        const details = document.getElementById('project-details');
+        if (!name) {
+          details.classList.add('hidden');
+          return;
+        }
+        const filtered = transactions.filter(t=>t.description === name);
+        if (filtered.length === 0) {
+          details.classList.add('hidden');
+          return;
+        }
+        
+        currentProjectData = filtered;
+        
+        const totalRec = filtered.reduce((s,t)=>s+t.received,0);
+        const totalPaid= filtered.reduce((s,t)=>s+t.paid,0);
+        const cash     = totalRec - totalPaid;
+        document.getElementById('project-title').textContent = name;
+        document.getElementById('project-total-received').textContent = formatCurrency(totalRec);
+        document.getElementById('project-total-paid').textContent    = formatCurrency(totalPaid);
+        document.getElementById('project-cash-in-hand').textContent  = formatCurrency(cash);
+        
+        // Fill transaction table
+        const tbody = document.getElementById('project-transactions-body');
+        tbody.innerHTML = filtered
+          .sort((a,b) => a.date - b.date)
+          .map(t => `
+            <tr class="border-b hover:bg-gray-50">
+              <td class="py-4 px-6">${formatDate(t.date)}</td>
+              <td class="py-4 px-6">${t.description}</td>
+              <td class="py-4 px-6">${t.type}</td>
+              <td class="py-4 px-6">${t.paidTo || '-'}</td>
+              <td class="py-4 px-6 text-right text-green-600 font-medium">${formatCurrency(t.received)}</td>
+              <td class="py-4 px-6 text-right text-red-500 font-medium">${formatCurrency(t.paid)}</td>
+              <td class="py-4 px-6 text-right font-semibold ${t.cashInHand >= 0 ? 'text-blue-600' : 'text-red-600'}">${formatCurrency(t.cashInHand)}</td>
+              <td class="py-4 px-6 text-center">
+                <button class="action-btn edit edit-btn" data-id="${t.id}">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete delete-btn" data-id="${t.id}">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>`).join('');
+            
+        // Add totals row
+        const tfoot = document.getElementById('project-totals-row');
+        tfoot.innerHTML = `
+          <tr class="totals-row">
+            <td colspan="4" class="text-right font-bold">Totals:</td>
+            <td class="py-3 px-6 text-right text-green-600">${formatCurrency(totalRec)}</td>
+            <td class="py-3 px-6 text-right text-red-500">${formatCurrency(totalPaid)}</td>
+            <td class="py-3 px-6 text-right text-blue-600">${formatCurrency(cash)}</td>
+            <td></td>
+          </tr>
+        `;
+        
+        details.classList.remove('hidden');
+      }
+
+      // Handle form submission
+      async function handleFormSubmit(e) {
+        e.preventDefault();
+        const dateStr = document.getElementById('entry-date').value;
+        const typeSel = document.getElementById('entry-project-type').value;
+        let projectName = '';
+        if (typeSel === 'existing') {
+          projectName = document.getElementById('entry-project-select').value;
+        } else {
+          projectName = document.getElementById('entry-project-new').value.trim();
+        }
+        const paymentType = document.getElementById('entry-payment-type').value;
+        const desc = document.getElementById('entry-description').value.trim();
+        const rec = parseFloat(document.getElementById('entry-received').value) || 0;
+        const paid = parseFloat(document.getElementById('entry-paid').value) || 0;
+        const paidTo = document.getElementById('entry-paid-to').value.trim();
+        const editId = document.getElementById('edit-id').value;
+        
+        if (!dateStr || !projectName || !paymentType) {
+          alert('Please enter date, project name, and payment type.');
+          return;
+        }
+        
+        if (editId) {
+          // Update existing transaction
+          const { error } = await supabase
+            .from('transactions')
+            .update({
+              date: new Date(dateStr),
+              description: projectName,
+              type: paymentType,
+              paid_to: paidTo,
+              received: rec,
+              paid: paid
+            })
+            .eq('id', editId);
+          
+          if (error) {
+            alert('Error updating transaction: ' + error.message);
+            return;
+          }
+          
+          // Update the local transactions array
+          const index = transactions.findIndex(t => t.id == editId);
+          if (index !== -1) {
+            transactions[index] = {
+              ...transactions[index],
+              date: new Date(dateStr),
+              description: projectName,
+              type: paymentType,
+              paidTo: paidTo,
+              received: rec,
+              paid: paid,
+              cashInHand: rec - paid
+            };
+          }
+          
+          document.getElementById('update-area').classList.add('hidden');
+          document.getElementById('submit-area').classList.remove('hidden');
+          document.getElementById('edit-id').value = '';
+        } else {
+          // Add new transaction
+          const { data: newTxn, error } = await supabase
+            .from('transactions')
+            .insert([{
+              date: new Date(dateStr),
+              description: projectName,
+              type: paymentType,
+              paid_to: paidTo,
+              received: rec,
+              paid: paid
+            }])
+            .select();
+          
+          if (error) {
+            alert('Error adding transaction: ' + error.message);
+            return;
+          }
+          
+          if (newTxn && newTxn.length > 0) {
+            const mappedTxn = {
+              id: newTxn[0].id,
+              date: new Date(newTxn[0].date),
+              description: newTxn[0].description,
+              type: newTxn[0].type,
+              paidTo: newTxn[0].paid_to,
+              received: newTxn[0].received,
+              paid: newTxn[0].paid,
+              cashInHand: newTxn[0].cash_in_hand
+            };
+            transactions.push(mappedTxn);
+          }
+        }
+        
+        document.getElementById('success-message').classList.remove('hidden');
+        setTimeout(() => document.getElementById('success-message').classList.add('hidden'), 3000);
+        document.getElementById('entry-form').reset();
+        toggleEntryProjectType();
+        updateAllViews();
+      }
+
+      // Toggle project type
+      function toggleEntryProjectType() {
+        const mode = document.getElementById('entry-project-type').value;
+        const existingDiv = document.getElementById('existing-project-container');
+        const newDiv      = document.getElementById('new-project-container');
+        if (mode === 'existing') {
+          existingDiv.classList.remove('hidden');
+          newDiv.classList.add('hidden');
+          document.getElementById('entry-project-new').value = '';
+        } else {
+          existingDiv.classList.add('hidden');
+          newDiv.classList.remove('hidden');
+        }
+      }
+      
+      // Edit transaction
+      function editTransaction(id) {
+        const txn = transactions.find(t => t.id == id);
+        if (!txn) return;
+        
+        // Switch to New Entry tab
+        switchTab('entry');
+        
+        // Fill form
+        document.getElementById('edit-id').value = txn.id;
+        document.getElementById('entry-date').valueAsDate = txn.date;
+        document.getElementById('entry-description').value = txn.description;
+        document.getElementById('entry-payment-type').value = txn.type;
+        document.getElementById('entry-paid-to').value = txn.paidTo || '';
+        document.getElementById('entry-received').value = txn.received;
+        document.getElementById('entry-paid').value = txn.paid;
+        
+        // Set project type
+        const names = [...new Set(transactions.map(t => t.description))];
+        if (names.includes(txn.description)) {
+          document.getElementById('entry-project-type').value = 'existing';
+          document.getElementById('entry-project-select').value = txn.description;
+          toggleEntryProjectType();
+        } else {
+          document.getElementById('entry-project-type').value = 'new';
+          document.getElementById('entry-project-new').value = txn.description;
+          toggleEntryProjectType();
+        }
+        
+        // Show update buttons
+        document.getElementById('submit-area').classList.add('hidden');
+        document.getElementById('update-area').classList.remove('hidden');
+      }
+      
+      // Delete transaction
+      async function deleteTransaction(id) {
+        if (confirm('Are you sure you want to delete this transaction?')) {
+          const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', id);
+          
+          if (error) {
+            alert('Error deleting transaction: ' + error.message);
+            return;
+          }
+          
+          transactions = transactions.filter(t => t.id != id);
+          updateAllViews();
+        }
+      }
+      
+      // Generate report
+      function generateReport() {
+        const fromDate = new Date(document.getElementById('report-from').value);
+        const toDate = new Date(document.getElementById('report-to').value);
+        if (!fromDate || !toDate) {
+          alert('Please select both dates.');
+          return;
+        }
+        
+        // Include the entire day for toDate
+        toDate.setHours(23, 59, 59, 999);
+        
+        const filtered = transactions.filter(t => {
+          const tDate = t.date;
+          return tDate >= fromDate && tDate <= toDate;
+        });
+        
+        filtered.sort((a, b) => a.date - b.date);
+        
+        currentReportData = filtered;
+        
+        const tbody = document.getElementById('report-transactions-body');
+        tbody.innerHTML = filtered.map(t => `
+          <tr class="border-b hover:bg-gray-50">
+            <td class="py-4 px-6">${formatDate(t.date)}</td>
+            <td class="py-4 px-6">${t.description}</td>
+            <td class="py-4 px-6">${t.type}</td>
+            <td class="py-4 px-6">${t.paidTo || '-'}</td>
+            <td class="py-4 px-6 text-right text-green-600 font-medium">${formatCurrency(t.received)}</td>
+            <td class="py-4 px-6 text-right text-red-500 font-medium">${formatCurrency(t.paid)}</td>
+            <td class="py-4 px-6 text-right font-semibold ${t.cashInHand >= 0 ? 'text-blue-600' : 'text-red-600'}">${formatCurrency(t.cashInHand)}</td>
+          </tr>
+        `).join('');
+        
+        // Calculate totals
+        const totalRec = filtered.reduce((sum, t) => sum + t.received, 0);
+        const totalPaid = filtered.reduce((sum, t) => sum + t.paid, 0);
+        const totalCash = filtered.reduce((sum, t) => sum + t.cashInHand, 0);
+        
+        // Add totals row
+        const tfoot = document.getElementById('report-totals-row');
+        tfoot.innerHTML = `
+          <tr class="totals-row">
+            <td colspan="4" class="text-right font-bold">Totals:</td>
+            <td class="py-3 px-6 text-right text-green-600">${formatCurrency(totalRec)}</td>
+            <td class="py-3 px-6 text-right text-red-500">${formatCurrency(totalPaid)}</td>
+            <td class="py-3 px-6 text-right text-blue-600">${formatCurrency(totalCash)}</td>
+          </tr>
+        `;
+        
+        document.getElementById('report-results').classList.remove('hidden');
+      }
+      
+      // Download CSV
+      function downloadCSV(data, filename) {
+        const headers = ['Date', 'Description', 'Payment Type', 'Paid To', 'Received', 'Paid', 'Cash'];
+        const rows = data.map(t => [
+          formatDate(t.date),
+          t.description,
+          t.type,
+          t.paidTo || '',
+          t.received,
+          t.paid,
+          t.cashInHand
+        ]);
+        
+        let csvContent = headers.join(',') + '\n';
+        rows.forEach(row => {
+          csvContent += row.join(',') + '\n';
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      // Download PDF
+      function downloadPDF(data, title, filename) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Title
+        doc.setFontSize(18);
+        doc.text(title, 15, 15);
+        
+        // Table headers
+        const headers = [['Date', 'Description', 'Type', 'Paid To', 'Received', 'Paid', 'Cash']];
+        
+        // Table data
+        const rows = data.map(t => [
+          formatDate(t.date),
+          t.description,
+          t.type,
+          t.paidTo || '',
+          formatCurrency(t.received, false),
+          formatCurrency(t.paid, false),
+          formatCurrency(t.cashInHand, false)
+        ]);
+        
+        // Generate table
+        doc.autoTable({
+          head: headers,
+          body: rows,
+          startY: 25,
+          theme: 'grid',
+          headStyles: {
+            fillColor: [26, 86, 219],
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+          styles: {
+            fontSize: 10,
+            cellPadding: 3
+          },
+          columnStyles: {
+            4: { halign: 'right' },
+            5: { halign: 'right' },
+            6: { halign: 'right' }
+          }
+        });
+        
+        doc.save(filename);
+      }
+      
+      // Download all data
+      function downloadAllData(format) {
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+        const filename = `Ashroy_Financial_Data_${dateStr}`;
+        
+        if (format === 'csv') {
+          downloadCSV(transactions, `${filename}.csv`);
+        } else if (format === 'pdf') {
+          downloadPDF(transactions, 'Ashroy Financial Data', `${filename}.pdf`);
+        }
+      }
+
+      // Tab navigation
+      const navLinks = document.querySelectorAll('.nav-link');
+      const sections = document.querySelectorAll('main > section');
+      function switchTab(targetId) {
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.id === 'nav-' + targetId) link.classList.add('active');
+        });
+        sections.forEach(sec => {
+          if (sec.id === targetId + '-section') sec.classList.remove('hidden');
+          else sec.classList.add('hidden');
+        });
+      }
+      navLinks.forEach(link => {
+        link.addEventListener('click', e => {
+          e.preventDefault();
+          const target = e.target.closest('a').id.replace('nav-', '');
+          switchTab(target);
+        });
+      });
+
+      // Initialize data and UI
+      transactions = await loadTransactions();
+      document.getElementById('current-year').textContent = new Date().getFullYear();
+      switchTab('dashboard');
+      populateYearFilter();
+      updateKPIs();
+      updateChart();
+      populateProjectSelectors();
+
+      // Project search functionality
+      document.getElementById('project-search').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const names = [...new Set(transactions.map(t => t.description))].sort();
+        const filtered = names.filter(name => name.toLowerCase().includes(searchTerm));
+        
+        if (filtered.length > 0) {
+          showProjectDetails(filtered[0]);
+        } else {
+          document.getElementById('project-details').classList.add('hidden');
+        }
+      });
+      
+      // Project export buttons
+      document.getElementById('project-export-csv').addEventListener('click', function() {
+        if (currentProjectData.length === 0) return;
+        const projectName = document.getElementById('project-title').textContent.replace(/\s+/g, '_');
+        const filename = `Ashroy_Project_${projectName}_Report.csv`;
+        downloadCSV(currentProjectData, filename);
+      });
+      
+      document.getElementById('project-export-pdf').addEventListener('click', function() {
+        if (currentProjectData.length === 0) return;
+        const projectName = document.getElementById('project-title').textContent;
+        const filename = `Ashroy_Project_${projectName.replace(/\s+/g, '_')}_Report.pdf`;
+        downloadPDF(currentProjectData, `${projectName} Report`, filename);
+      });
+      
+      // Transaction report buttons
+      document.getElementById('generate-report').addEventListener('click', generateReport);
+      
+      document.getElementById('download-csv').addEventListener('click', function() {
+        if (currentReportData.length === 0) return;
+        const from = document.getElementById('report-from').value;
+        const to = document.getElementById('report-to').value;
+        const filename = `Ashroy_Transaction_Report_${from}_to_${to}.csv`;
+        downloadCSV(currentReportData, filename);
+      });
+      
+      document.getElementById('download-pdf').addEventListener('click', function() {
+        if (currentReportData.length === 0) return;
+        const from = document.getElementById('report-from').value;
+        const to = document.getElementById('report-to').value;
+        const title = `Transaction Report (${from} to ${to})`;
+        const filename = `Ashroy_Transaction_Report_${from}_to_${to}.pdf`;
+        downloadPDF(currentReportData, title, filename);
+      });
+      
+      // Edit and delete buttons
+      document.addEventListener('click', function(e) {
+        if (e.target.closest('.edit-btn')) {
+          const id = e.target.closest('.edit-btn').dataset.id;
+          editTransaction(id);
+        }
+        
+        if (e.target.closest('.delete-btn')) {
+          const id = e.target.closest('.delete-btn').dataset.id;
+          deleteTransaction(id);
+        }
+      });
+      
+      // Cancel edit button
+      document.getElementById('cancel-edit').addEventListener('click', function() {
+        document.getElementById('entry-form').reset();
+        document.getElementById('update-area').classList.add('hidden');
+        document.getElementById('submit-area').classList.remove('hidden');
+        document.getElementById('edit-id').value = '';
+        toggleEntryProjectType();
+      });
+      
+      // Export all data buttons
+      document.getElementById('export-all-csv').addEventListener('click', function() {
+        downloadAllData('csv');
+      });
+      
+      document.getElementById('export-all-pdf').addEventListener('click', function() {
+        downloadAllData('pdf');
+      });
+      
+      // Form submit handler
+      document.getElementById('entry-form').addEventListener('submit', handleFormSubmit);
+      document.getElementById('entry-project-type').addEventListener('change', toggleEntryProjectType);
+      
+      // Chart mode buttons
+      document.querySelectorAll('.chart-mode-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.chart-mode-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          updateChart();
+        });
+      });
+
+      // Update all views
+      function updateAllViews() {
+        updateKPIs();
+        updateChart();
+        populateProjectSelectors();
+        
+        // Refresh project details if currently shown
+        const projectTitle = document.getElementById('project-title').textContent;
+        if (projectTitle) {
+          showProjectDetails(projectTitle);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
