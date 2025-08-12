@@ -2080,9 +2080,25 @@
       }
 
       async function handleFormSubmission() {
+        // Get project name based on project type
+        const projectType = document.getElementById('entry-project-type').value;
+        let projectName = '';
+
+        if (projectType === 'existing') {
+          projectName = document.getElementById('entry-project-select').value;
+        } else {
+          projectName = document.getElementById('entry-project-new').value;
+        }
+
+        // Get the detailed description
+        const detailedDescription = document.getElementById('entry-description').value;
+
+        // Combine project name and detailed description for the transaction description
+        const fullDescription = projectName + (detailedDescription ? `: ${detailedDescription}` : '');
+
         const formData = {
           date: document.getElementById('entry-date').value,
-          description: document.getElementById('entry-description').value,
+          description: fullDescription,
           type: document.getElementById('entry-payment-type').value,
           paid_to: document.getElementById('entry-paid-to').value,
           received: parseFloat(document.getElementById('entry-received').value) || 0,
