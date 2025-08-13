@@ -1645,6 +1645,7 @@
             return [];
           }
 
+          // FIX: Compute cashInHand as received - paid for each transaction
           return data.map(t => ({
             id: t.id,
             date: new Date(t.date),
@@ -1653,7 +1654,7 @@
             paidTo: t.paid_to,
             received: t.received,
             paid: t.paid,
-            cashInHand: t.cash_in_hand
+            cashInHand: t.received - t.paid  // Calculate per-transaction cash
           }));
         } catch (error) {
           console.error('Network error:', error);
@@ -2105,10 +2106,8 @@
           paid: parseFloat(document.getElementById('entry-paid').value) || 0
         };
         
-        // Calculate cash in hand
-        const totalReceived = transactions.reduce((s, t) => s + t.received, 0) + formData.received;
-        const totalPaid = transactions.reduce((s, t) => s + t.paid, 0) + formData.paid;
-        formData.cash_in_hand = totalReceived - totalPaid;
+        // FIX: Calculate cash in hand for this transaction only
+        formData.cash_in_hand = formData.received - formData.paid;
         
         try {
           const { data, error } = await supabase
@@ -2207,6 +2206,8 @@
         const totalPaid = projectTransactions.reduce((s, t) => s + t.paid, 0);
         const designBill = projectTransactions.filter(t => t.type === 'Design Bill').reduce((s, t) => s + t.received, 0);
         const siteVisit = projectTransactions.filter(t => t.type === 'Site Visit').reduce((s, t) => s + t.received, 0);
+        
+        // FIX: Calculate cash in hand ONLY for this project
         const cashInHand = totalReceived - totalPaid;
         
         document.getElementById('project-total-received').textContent = formatCurrency(totalReceived);
@@ -2217,7 +2218,12 @@
         
         // Update project transactions table
         const tbody = document.getElementById('project-transactions-body');
-        tbody.innerHTML = projectTransactions.map(t => `
+        
+        // FIX: Calculate cumulative cash for each transaction within the project
+        let runningCash = 0;
+        tbody.innerHTML = projectTransactions.map(t => {
+          runningCash += t.received - t.paid;
+          return `
           <tr class="hover:bg-gray-50 transition-colors">
             <td>${formatDate(t.date)}</td>
             <td>${t.description}</td>
@@ -2225,7 +2231,7 @@
             <td>${t.paidTo || '-'}</td>
             <td class="text-right font-medium text-green-600">${formatCurrency(t.received)}</td>
             <td class="text-right font-medium text-red-500">${formatCurrency(t.paid)}</td>
-            <td class="text-right font-medium">${formatCurrency(t.cashInHand)}</td>
+            <td class="text-right font-medium">${formatCurrency(runningCash)}</td>
             <td class="text-center">
               <button class="action-btn edit-btn" onclick="editTransaction(${t.id})">
                 <i class="fas fa-edit"></i>
@@ -2235,7 +2241,20 @@
               </button>
             </td>
           </tr>
-        `).join('');
+          `;
+        }).join('');
+        
+        // Add totals row
+        const tfoot = document.getElementById('project-totals-row');
+        tfoot.innerHTML = `
+          <tr class="bg-gray-100 font-bold">
+            <td colspan="4" class="text-right">TOTALS:</td>
+            <td class="text-right text-green-600">${formatCurrency(totalReceived)}</td>
+            <td class="text-right text-red-500">${formatCurrency(totalPaid)}</td>
+            <td class="text-right text-blue-600">${formatCurrency(cashInHand)}</td>
+            <td></td>
+          </tr>
+        `;
       }
 
       // Enhanced report generation
