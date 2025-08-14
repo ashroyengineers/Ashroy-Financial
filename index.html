@@ -951,6 +951,40 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(240, 82, 82, 0.3);
     }
+    
+    /* Narrative Summary Styles */
+    .narrative-summary {
+      background: rgba(255, 255, 255, 0.85);
+      border-left: 4px solid var(--primary);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    
+    [data-theme="dark"] .narrative-summary {
+      background: rgba(30, 41, 59, 0.85);
+      border-left-color: var(--accent);
+    }
+    
+    .narrative-highlight {
+      background: linear-gradient(120deg, rgba(26, 86, 219, 0.15), transparent);
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    
+    .narrative-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--primary);
+    }
+    
+    [data-theme="dark"] .narrative-title {
+      color: var(--accent);
+    }
   </style>
 </head>
 <body class="antialiased min-h-screen" data-theme="light">
@@ -1091,6 +1125,12 @@
           </button>
         </div>
         
+        <!-- Narrative Summary Section -->
+        <div class="narrative-summary">
+          <div class="narrative-title">Analytics Insights</div>
+          <p id="revenue-narrative">Generating insights from your financial data...</p>
+        </div>
+        
         <div class="flex gap-4 mt-6">
           <div class="flex-1 text-center p-4 glass-card">
             <div class="text-gray-500 mb-1 font-medium">Avg. Monthly Received</div>
@@ -1152,13 +1192,24 @@
             <div class="chart-wrapper" style="height: 250px;">
               <canvas id="paymentTypeChart"></canvas>
             </div>
-            <p class="text-sm text-gray-500 mt-4">* Shows payment distribution for the current month</p>
+            
+            <!-- Payment Type Narrative -->
+            <div class="narrative-summary mt-4">
+              <div class="narrative-title">Payment Insights</div>
+              <p id="payment-narrative">Analyzing payment patterns...</p>
+            </div>
           </div>
           
           <div class="glass-card p-6">
             <h3 class="text-lg font-bold mb-4">Recent Transactions</h3>
             <div class="space-y-3" id="recent-transactions">
               <!-- Recent transactions will be populated by JS -->
+            </div>
+            
+            <!-- Transactions Narrative -->
+            <div class="narrative-summary mt-4">
+              <div class="narrative-title">Transaction Insights</div>
+              <p id="transactions-narrative">Summarizing recent activity...</p>
             </div>
           </div>
         </div>
@@ -1235,6 +1286,12 @@
               <div class="kpi-title">Cash on Hand</div>
               <div class="kpi-value cash-text" id="project-cash-in-hand">৳0</div>
             </div>
+          </div>
+          
+          <!-- Project Narrative -->
+          <div class="narrative-summary mb-6">
+            <div class="narrative-title">Project Insights</div>
+            <p id="project-narrative">Analyzing project performance...</p>
           </div>
           
           <div class="table-container">
@@ -1418,6 +1475,12 @@
                 <i class="fas fa-file-pdf"></i> Export PDF
               </button>
             </div>
+          </div>
+          
+          <!-- Report Narrative -->
+          <div class="narrative-summary mb-6">
+            <div class="narrative-title">Report Insights</div>
+            <p id="report-narrative">Summarizing report findings...</p>
           </div>
           
           <div class="table-container">
@@ -1876,6 +1939,79 @@
         
         const data = { labels, datasets };
         revenueChart = new Chart(ctx, { type: options.type, data, options });
+        
+        // Generate and display narrative
+        const narrative = generateRevenueNarrative(monthlyRec, monthlyPaid, profitData, selYear);
+        document.getElementById('revenue-narrative').innerHTML = narrative;
+      }
+
+      // Natural Language Generation for Revenue Analytics
+      function generateRevenueNarrative(monthlyRec, monthlyPaid, profitData, year) {
+        if (monthlyRec.every(v => v === 0) && monthlyPaid.every(v => v === 0)) {
+          return `<span class="text-gray-500">No data available for ${year}. Please add transactions to see insights.</span>`;
+        }
+        
+        // Find peak and low months
+        const maxRecIndex = monthlyRec.indexOf(Math.max(...monthlyRec));
+        const minRecIndex = monthlyRec.indexOf(Math.min(...monthlyRec.filter(v => v > 0)));
+        const maxProfitIndex = profitData.indexOf(Math.max(...profitData));
+        const minProfitIndex = profitData.indexOf(Math.min(...profitData));
+        
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        // Calculate totals and averages
+        const totalRec = monthlyRec.reduce((a, b) => a + b, 0);
+        const totalPaid = monthlyPaid.reduce((a, b) => a + b, 0);
+        const totalProfit = profitData.reduce((a, b) => a + b, 0);
+        const avgRec = totalRec / 12;
+        const avgProfit = totalProfit / 12;
+        const profitMargin = totalRec > 0 ? (totalProfit / totalRec * 100) : 0;
+        
+        // Compare with previous year if available
+        let prevYearComparison = '';
+        const prevYear = year - 1;
+        const prevYearRec = transactions
+          .filter(t => t.date.getFullYear() === prevYear)
+          .reduce((s, t) => s + t.received, 0);
+        
+        if (prevYearRec > 0) {
+          const growth = ((totalRec - prevYearRec) / prevYearRec * 100).toFixed(1);
+          prevYearComparison = `This represents a <span class="narrative-highlight">${growth}%</span> ${growth >= 0 ? 'growth' : 'decline'} compared to ${prevYear}.`;
+        }
+        
+        // Identify trends
+        const growthMonths = monthlyRec.slice(0, -1).filter((v, i) => v < monthlyRec[i+1]).length;
+        const declineMonths = monthlyRec.slice(0, -1).filter((v, i) => v > monthlyRec[i+1]).length;
+        const trend = growthMonths > declineMonths ? 
+          "an overall <span class='narrative-highlight'>upward trend</span>" : 
+          "a <span class='narrative-highlight'>downward trend</span>";
+        
+        // Identify best performing quarter
+        const quarters = [
+          monthlyRec.slice(0, 3).reduce((a, b) => a + b, 0), // Q1
+          monthlyRec.slice(3, 6).reduce((a, b) => a + b, 0), // Q2
+          monthlyRec.slice(6, 9).reduce((a, b) => a + b, 0), // Q3
+          monthlyRec.slice(9, 12).reduce((a, b) => a + b, 0)  // Q4
+        ];
+        const bestQuarterIndex = quarters.indexOf(Math.max(...quarters));
+        const bestQuarter = ['Q1 (Jan-Mar)', 'Q2 (Apr-Jun)', 'Q3 (Jul-Sep)', 'Q4 (Oct-Dec)'][bestQuarterIndex];
+        
+        // Create narrative
+        const narrative = `
+          In <span class="narrative-highlight">${year}</span>, revenue showed ${trend} throughout the year. 
+          The highest revenue month was <span class="narrative-highlight">${months[maxRecIndex]}</span> with ${formatCurrency(monthlyRec[maxRecIndex])}, 
+          while <span class="narrative-highlight">${months[minRecIndex]}</span> had the lowest at ${formatCurrency(monthlyRec[minRecIndex])}.
+          <br><br>
+          Profitability peaked in <span class="narrative-highlight">${months[maxProfitIndex]}</span> with ${formatCurrency(profitData[maxProfitIndex])} net profit. 
+          The overall profit margin stands at <span class="narrative-highlight">${profitMargin.toFixed(1)}%</span>, 
+          with an average monthly profit of ${formatCurrency(avgProfit)}.
+          <br><br>
+          The strongest performing quarter was <span class="narrative-highlight">${bestQuarter}</span>. 
+          ${prevYearComparison}
+        `;
+        
+        return narrative;
       }
 
       // Enhanced summary section
@@ -1897,6 +2033,10 @@
         
         updatePaymentTypeChart();
         updateRecentTransactions();
+        
+        // Generate narratives
+        generatePaymentTypeNarrative();
+        generateRecentTransactionsNarrative();
       }
 
       function updatePaymentTypeChart() {
@@ -1966,6 +2106,49 @@
           }
         });
       }
+      
+      // Generate narrative for payment types
+      function generatePaymentTypeNarrative() {
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        const monthName = new Date().toLocaleString('default', { month: 'long' });
+        
+        const monthlyTransactions = transactions.filter(t => 
+          t.date.getMonth() === currentMonth && t.date.getFullYear() === currentYear
+        );
+        
+        const paymentTypes = {};
+        monthlyTransactions.forEach(t => {
+          if (t.received > 0) {
+            paymentTypes[t.type] = (paymentTypes[t.type] || 0) + t.received;
+          }
+        });
+        
+        const total = Object.values(paymentTypes).reduce((a, b) => a + b, 0);
+        if (total === 0) {
+          document.getElementById('payment-narrative').innerHTML = `No revenue data available for ${monthName}.`;
+          return;
+        }
+        
+        // Find dominant payment type
+        const types = Object.entries(paymentTypes);
+        types.sort((a, b) => b[1] - a[1]);
+        
+        const dominantType = types[0][0];
+        const dominantPercent = ((types[0][1] / total) * 100).toFixed(1);
+        const secondType = types[1] ? types[1][0] : '';
+        const secondPercent = types[1] ? ((types[1][1] / total) * 100).toFixed(1) : '';
+        
+        // Create narrative
+        const narrative = `
+          In ${monthName}, the primary revenue source was 
+          <span class="narrative-highlight">${dominantType}</span> payments, 
+          accounting for <span class="narrative-highlight">${dominantPercent}%</span> of total income. 
+          ${secondType ? `The second largest contributor was <span class="narrative-highlight">${secondType}</span> with ${secondPercent}%.` : ''}
+        `;
+        
+        document.getElementById('payment-narrative').innerHTML = narrative;
+      }
 
       function updateRecentTransactions() {
         const recentTransactions = transactions
@@ -1987,6 +2170,47 @@
             </div>
           </div>
         `).join('');
+        
+        generateRecentTransactionsNarrative();
+      }
+      
+      // Generate narrative for recent transactions
+      function generateRecentTransactionsNarrative() {
+        const recentTransactions = transactions
+          .sort((a, b) => b.date - a.date)
+          .slice(0, 5);
+          
+        if (recentTransactions.length === 0) {
+          document.getElementById('transactions-narrative').innerHTML = "No recent transactions found.";
+          return;
+        }
+        
+        // Analyze transaction types
+        const transactionTypes = {};
+        recentTransactions.forEach(t => {
+          transactionTypes[t.type] = (transactionTypes[t.type] || 0) + 1;
+        });
+        
+        const mostFrequentType = Object.entries(transactionTypes)
+          .sort((a, b) => b[1] - a[1])[0][0];
+          
+        const largestTransaction = recentTransactions
+          .sort((a, b) => Math.max(b.received, b.paid) - Math.max(a.received, a.paid))[0];
+        
+        const largestAmount = formatCurrency(Math.max(largestTransaction.received, largestTransaction.paid));
+        const largestDate = formatDate(largestTransaction.date);
+        
+        // Create narrative
+        const narrative = `
+          Recent activity shows a focus on 
+          <span class="narrative-highlight">${mostFrequentType}</span> transactions. 
+          The largest recent transaction was 
+          <span class="narrative-highlight">${largestAmount}</span> 
+          on ${largestDate} for 
+          <span class="narrative-highlight">${largestTransaction.description}</span>.
+        `;
+        
+        document.getElementById('transactions-narrative').innerHTML = narrative;
       }
 
       // Enhanced navigation
@@ -2216,6 +2440,9 @@
         document.getElementById('project-total-site-visit').textContent = formatCurrency(siteVisit);
         document.getElementById('project-cash-in-hand').textContent = formatCurrency(cashInHand);
         
+        // Generate project narrative
+        generateProjectNarrative(projectName, totalReceived, totalPaid, cashInHand, designBill, siteVisit);
+        
         // Update project transactions table
         const tbody = document.getElementById('project-transactions-body');
         
@@ -2255,6 +2482,26 @@
             <td></td>
           </tr>
         `;
+      }
+      
+      // Generate narrative for projects
+      function generateProjectNarrative(projectName, totalReceived, totalPaid, cashInHand, designBill, siteVisit) {
+        const profitability = totalReceived - totalPaid;
+        const profitStatus = profitability > 0 ? 'profitable' : 'unprofitable';
+        const primarySource = designBill > siteVisit ? 'Design Bill' : 'Site Visit';
+        const sourcePercent = designBill > siteVisit ? 
+          (designBill / totalReceived * 100).toFixed(1) : 
+          (siteVisit / totalReceived * 100).toFixed(1);
+        
+        const narrative = `
+          The project <span class="narrative-highlight">${projectName}</span> is currently 
+          <span class="narrative-highlight">${profitStatus}</span> with a net profit of 
+          <span class="narrative-highlight">${formatCurrency(profitability)}</span>. 
+          The primary revenue source is <span class="narrative-highlight">${primarySource}</span> 
+          which accounts for <span class="narrative-highlight">${sourcePercent}%</span> of total income.
+        `;
+        
+        document.getElementById('project-narrative').innerHTML = narrative;
       }
 
       // Enhanced report generation
@@ -2320,6 +2567,30 @@
         
         document.getElementById('report-results').classList.remove('hidden');
         showNotification(`Report generated with ${reportTransactions.length} transactions`, 'success');
+        
+        // Generate report narrative
+        generateReportNarrative(reportTransactions, totalReceived, totalPaid, finalCash);
+      }
+      
+      // Generate narrative for reports
+      function generateReportNarrative(transactions, totalReceived, totalPaid, finalCash) {
+        const transactionCount = transactions.length;
+        const startDate = formatDate(transactions[0].date);
+        const endDate = formatDate(transactions[transactions.length - 1].date);
+        const netProfit = totalReceived - totalPaid;
+        const profitStatus = netProfit > 0 ? 'profitable' : 'unprofitable';
+        
+        const narrative = `
+          This report covers <span class="narrative-highlight">${transactionCount} transactions</span> 
+          from <span class="narrative-highlight">${startDate}</span> to 
+          <span class="narrative-highlight">${endDate}</span>. 
+          The period was <span class="narrative-highlight">${profitStatus}</span> with a net profit of 
+          <span class="narrative-highlight">${formatCurrency(netProfit)}</span>. 
+          Total revenue was <span class="narrative-highlight">${formatCurrency(totalReceived)}</span> 
+          against expenses of <span class="narrative-highlight">${formatCurrency(totalPaid)}</span>.
+        `;
+        
+        document.getElementById('report-narrative').innerHTML = narrative;
       }
 
       // Enhanced export functionality
@@ -2522,7 +2793,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-lg font-semibold mb-3">Top Projects by Profit</h3>
+                <h3 class="text-lg font-bold mb-4">Top Projects by Profit</h3>
                 ${analytics.topProjects.map(project => `
                   <div class="flex justify-between items-center py-2 border-b border-gray-200">
                     <span class="font-medium">${project.name}</span>
@@ -2532,7 +2803,7 @@
               </div>
               
               <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-lg font-semibold mb-3">Payment Type Analysis</h3>
+                <h3 class="text-lg font-bold mb-4">Payment Type Analysis</h3>
                 ${Object.entries(analytics.paymentTypes).map(([type, data]) => `
                   <div class="flex justify-between items-center py-2 border-b border-gray-200">
                     <span class="font-medium">${type}</span>
