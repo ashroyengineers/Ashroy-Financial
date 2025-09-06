@@ -274,7 +274,7 @@
     }
 
     [data-theme="dark"] #global-page-header {
-      background: rgba(30, 41, 59, 0.95);
+      background: rgba(30, 41,59, 0.95);
     }
 
     .page-title {
@@ -985,6 +985,24 @@
     [data-theme="dark"] .narrative-title {
       color: var(--accent);
     }
+
+    /* Summary Filter Styles */
+    .summary-filters {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .summary-filter {
+      min-width: 120px;
+    }
+    
+    .summary-filter label {
+      margin-bottom: 4px;
+      font-size: 13px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body class="antialiased min-h-screen" data-theme="light">
@@ -1154,6 +1172,32 @@
         <div class="chart-header">
           <h2 class="chart-title">Financial Summary</h2>
           <div class="flex gap-2">
+            <div class="summary-filters">
+              <div class="summary-filter">
+                <label for="summary-year">Year</label>
+                <select id="summary-year" class="p-2 border rounded">
+                  <!-- Years will be populated by JS -->
+                </select>
+              </div>
+              <div class="summary-filter">
+                <label for="summary-month">Month</label>
+                <select id="summary-month" class="p-2 border rounded">
+                  <option value="all">All Months</option>
+                  <option value="0">January</option>
+                  <option value="1">February</option>
+                  <option value="2">March</option>
+                  <option value="3">April</option>
+                  <option value="4">May</option>
+                  <option value="5">June</option>
+                  <option value="6">July</option>
+                  <option value="7">August</option>
+                  <option value="8">September</option>
+                  <option value="9">October</option>
+                  <option value="10">November</option>
+                  <option value="11">December</option>
+                </select>
+              </div>
+            </div>
             <button class="btn btn-primary" id="refresh-summary">
               <i class="fas fa-sync-alt"></i> Refresh
             </button>
@@ -1165,7 +1209,7 @@
             <div class="kpi-icon received-bg">
               <i class="fas fa-calendar-check"></i>
             </div>
-            <div class="kpi-title">This Month Received</div>
+            <div class="kpi-title">Received Amount</div>
             <div class="kpi-value received-text" id="month-received">৳0</div>
           </div>
           
@@ -1173,7 +1217,7 @@
             <div class="kpi-icon paid-bg">
               <i class="fas fa-calendar-times"></i>
             </div>
-            <div class="kpi-title">This Month Paid</div>
+            <div class="kpi-title">Paid Amount</div>
             <div class="kpi-value paid-text" id="month-paid">৳0</div>
           </div>
           
@@ -1181,8 +1225,16 @@
             <div class="kpi-icon cash-bg">
               <i class="fas fa-chart-pie"></i>
             </div>
-            <div class="kpi-title">This Month Profit</div>
+            <div class="kpi-title">Net Profit</div>
             <div class="kpi-value cash-text" id="month-profit">৳0</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background: var(--accent-light); color: var(--accent);">
+              <i class="fas fa-receipt"></i>
+            </div>
+            <div class="kpi-title">Total Transactions</div>
+            <div class="kpi-value" style="color: var(--accent);" id="total-transactions">0</div>
           </div>
         </div>
 
@@ -1372,13 +1424,15 @@
             </div>
             
             <div class="form-group">
-              <label for="entry-payment-type">Payment Type</label>
+              <label for="entry-type">Payment Type</label>
               <div class="input-icon">
                 <i class="fas fa-credit-card"></i>
-                <select id="entry-payment-type" required>
+                <select id="entry-type" required>
+                  <option value="">Select Payment Type</option>
                   <option value="Design Bill">Design Bill</option>
                   <option value="Site Visit">Site Visit</option>
-                  <option value="Other's">Other's</option>
+                  <option value="Expense">Expense</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
             </div>
@@ -1387,50 +1441,40 @@
               <label for="entry-paid-to">Paid To (Optional)</label>
               <div class="input-icon">
                 <i class="fas fa-user"></i>
-                <input type="text" id="entry-paid-to" placeholder="Enter recipient name">
-              </div>
-            </div>
-            
-            <div class="form-group grid-col-2">
-              <label for="entry-description">Description</label>
-              <div class="input-icon">
-                <i class="fas fa-file-alt"></i>
-                <input type="text" id="entry-description" placeholder="Enter a brief description of the transaction">
+                <input type="text" id="entry-paid-to" placeholder="Person or company name">
               </div>
             </div>
             
             <div class="form-group">
-              <label for="entry-received">Received Amount (BDT)</label>
+              <label for="entry-received">Amount Received (৳)</label>
               <div class="input-icon">
                 <i class="fas fa-arrow-down"></i>
-                <input type="number" id="entry-received" value="0" min="0" step="0.01">
+                <input type="number" id="entry-received" min="0" step="0.01" placeholder="0.00">
               </div>
             </div>
             
             <div class="form-group">
-              <label for="entry-paid">Paid Amount (BDT)</label>
+              <label for="entry-paid">Amount Paid (৳)</label>
               <div class="input-icon">
                 <i class="fas fa-arrow-up"></i>
-                <input type="number" id="entry-paid" value="0" min="0" step="0.01">
+                <input type="number" id="entry-paid" min="0" step="0.01" placeholder="0.00">
               </div>
             </div>
           </div>
           
-          <div class="flex justify-center gap-4 mt-8">
-            <button type="submit" class="btn btn-primary" id="submit-entry">
-              <i class="fas fa-paper-plane"></i> Submit Transaction
+          <div class="flex justify-center gap-4 mt-6">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Transaction
             </button>
-            
-            <button type="button" class="btn btn-secondary hidden" id="cancel-edit">
-              <i class="fas fa-times"></i> Cancel Edit
+            <button type="button" class="btn btn-secondary" id="clear-form">
+              <i class="fas fa-eraser"></i> Clear Form
             </button>
-          </div>
-          
-          <div id="success-message" class="hidden">
-            <i class="fas fa-check-circle"></i>
-            <span class="font-medium">Success!</span> Transaction has been saved successfully.
           </div>
         </form>
+        
+        <div id="success-message" class="hidden">
+          Transaction saved successfully!
+        </div>
       </div>
     </section>
     
@@ -1438,7 +1482,8 @@
     <section id="report-section" class="hidden">
       <div class="form-card">
         <h2 class="form-title">Generate Transaction Report</h2>
-        <div class="form-grid mb-6">
+        
+        <div class="form-grid">
           <div class="form-group">
             <label for="report-from">From Date</label>
             <div class="input-icon">
@@ -1446,6 +1491,7 @@
               <input type="date" id="report-from">
             </div>
           </div>
+          
           <div class="form-group">
             <label for="report-to">To Date</label>
             <div class="input-icon">
@@ -1572,7 +1618,6 @@
     
     <footer>
       <p>&copy; <span id="current-year-footer"></span> Ashroy Architects & Engineers. All rights reserved.</p>
-      <p class="mt-2 text-sm">Enhanced Financial Dashboard with Advanced Analytics</p>
     </footer>
   </main>
 
@@ -1896,8 +1941,8 @@
               borderColor: '#10B981',
               backgroundColor: 'rgba(16, 185, 129, 0.1)',
               borderWidth: 4,
-              tension: 0.4,
               fill: true,
+              tension: 0.4,
               pointBackgroundColor: '#10B981',
               pointBorderColor: '#ffffff',
               pointBorderWidth: 3,
@@ -1910,8 +1955,8 @@
               borderColor: '#F43F5E',
               backgroundColor: 'rgba(244, 63, 94, 0.1)',
               borderWidth: 4,
-              tension: 0.4,
               fill: true,
+              tension: 0.4,
               pointBackgroundColor: '#F43F5E',
               pointBorderColor: '#ffffff',
               pointBorderWidth: 3,
@@ -2016,40 +2061,43 @@
 
       // Enhanced summary section
       function updateSummarySection() {
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
+        // Get selected year and month
+        const selectedYear = parseInt(document.getElementById('summary-year').value);
+        const selectedMonth = document.getElementById('summary-month').value;
         
-        const monthlyTransactions = transactions.filter(t => 
-          t.date.getMonth() === currentMonth && t.date.getFullYear() === currentYear
+        // Filter transactions based on selection
+        let filteredTransactions = transactions.filter(t => 
+          t.date.getFullYear() === selectedYear
         );
         
-        const monthReceived = monthlyTransactions.reduce((s, t) => s + t.received, 0);
-        const monthPaid = monthlyTransactions.reduce((s, t) => s + t.paid, 0);
+        if (selectedMonth !== 'all') {
+          const monthNum = parseInt(selectedMonth);
+          filteredTransactions = filteredTransactions.filter(t => 
+            t.date.getMonth() === monthNum
+          );
+        }
+        
+        const monthReceived = filteredTransactions.reduce((s, t) => s + t.received, 0);
+        const monthPaid = filteredTransactions.reduce((s, t) => s + t.paid, 0);
         const monthProfit = monthReceived - monthPaid;
+        const totalTransactions = filteredTransactions.length;
         
         animateValue('month-received', monthReceived, formatCurrency);
         animateValue('month-paid', monthPaid, formatCurrency);
         animateValue('month-profit', monthProfit, formatCurrency);
+        document.getElementById('total-transactions').textContent = totalTransactions;
         
-        updatePaymentTypeChart();
-        updateRecentTransactions();
+        updatePaymentTypeChart(filteredTransactions);
+        updateRecentTransactions(filteredTransactions);
         
         // Generate narratives
-        generatePaymentTypeNarrative();
-        generateRecentTransactionsNarrative();
+        generatePaymentTypeNarrative(filteredTransactions);
+        generateRecentTransactionsNarrative(filteredTransactions);
       }
 
-      function updatePaymentTypeChart() {
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        
-        // Filter transactions for current month only
-        const monthlyTransactions = transactions.filter(t => 
-          t.date.getMonth() === currentMonth && t.date.getFullYear() === currentYear
-        );
-        
+      function updatePaymentTypeChart(filteredTransactions) {
         const paymentTypes = {};
-        monthlyTransactions.forEach(t => {
+        filteredTransactions.forEach(t => {
           if (t.received > 0) {
             paymentTypes[t.type] = (paymentTypes[t.type] || 0) + t.received;
           }
@@ -2108,17 +2156,18 @@
       }
       
       // Generate narrative for payment types
-      function generatePaymentTypeNarrative() {
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        const monthName = new Date().toLocaleString('default', { month: 'long' });
+      function generatePaymentTypeNarrative(filteredTransactions) {
+        const selectedYear = parseInt(document.getElementById('summary-year').value);
+        const selectedMonth = document.getElementById('summary-month').value;
         
-        const monthlyTransactions = transactions.filter(t => 
-          t.date.getMonth() === currentMonth && t.date.getFullYear() === currentYear
-        );
+        let periodText = selectedYear.toString();
+        if (selectedMonth !== 'all') {
+          const monthName = new Date(selectedYear, parseInt(selectedMonth)).toLocaleString('default', { month: 'long' });
+          periodText = `${monthName} ${selectedYear}`;
+        }
         
         const paymentTypes = {};
-        monthlyTransactions.forEach(t => {
+        filteredTransactions.forEach(t => {
           if (t.received > 0) {
             paymentTypes[t.type] = (paymentTypes[t.type] || 0) + t.received;
           }
@@ -2126,7 +2175,7 @@
         
         const total = Object.values(paymentTypes).reduce((a, b) => a + b, 0);
         if (total === 0) {
-          document.getElementById('payment-narrative').innerHTML = `No revenue data available for ${monthName}.`;
+          document.getElementById('payment-narrative').innerHTML = `No revenue data available for ${periodText}.`;
           return;
         }
         
@@ -2141,7 +2190,7 @@
         
         // Create narrative
         const narrative = `
-          In ${monthName}, the primary revenue source was 
+          In ${periodText}, the primary revenue source was 
           <span class="narrative-highlight">${dominantType}</span> payments, 
           accounting for <span class="narrative-highlight">${dominantPercent}%</span> of total income. 
           ${secondType ? `The second largest contributor was <span class="narrative-highlight">${secondType}</span> with ${secondPercent}%.` : ''}
@@ -2150,8 +2199,8 @@
         document.getElementById('payment-narrative').innerHTML = narrative;
       }
 
-      function updateRecentTransactions() {
-        const recentTransactions = transactions
+      function updateRecentTransactions(filteredTransactions) {
+        const recentTransactions = filteredTransactions
           .sort((a, b) => b.date - a.date)
           .slice(0, 5);
         
@@ -2171,12 +2220,12 @@
           </div>
         `).join('');
         
-        generateRecentTransactionsNarrative();
+        generateRecentTransactionsNarrative(filteredTransactions);
       }
       
       // Generate narrative for recent transactions
-      function generateRecentTransactionsNarrative() {
-        const recentTransactions = transactions
+      function generateRecentTransactionsNarrative(filteredTransactions) {
+        const recentTransactions = filteredTransactions
           .sort((a, b) => b.date - a.date)
           .slice(0, 5);
           
@@ -2288,8 +2337,8 @@
         const existingProjectContainer = document.getElementById('existing-project-container');
         const newProjectContainer = document.getElementById('new-project-container');
         
-        projectTypeSelect.addEventListener('change', () => {
-          if (projectTypeSelect.value === 'new') {
+        projectTypeSelect.addEventListener('change', function() {
+          if (this.value === 'new') {
             existingProjectContainer.classList.add('hidden');
             newProjectContainer.classList.remove('hidden');
           } else {
@@ -2297,127 +2346,79 @@
             newProjectContainer.classList.add('hidden');
           }
         });
-        
-        form.addEventListener('submit', async (e) => {
+
+        form.addEventListener('submit', async function(e) {
           e.preventDefault();
-          await handleFormSubmission();
+          
+          const formData = {
+            date: document.getElementById('entry-date').value,
+            description: projectTypeSelect.value === 'new' ? 
+              document.getElementById('entry-project-new').value : 
+              document.getElementById('entry-project-select').value,
+            type: document.getElementById('entry-type').value,
+            paid_to: document.getElementById('entry-paid-to').value || null,
+            received: parseFloat(document.getElementById('entry-received').value) || 0,
+            paid: parseFloat(document.getElementById('entry-paid').value) || 0
+          };
+
+          try {
+            const { data, error } = await supabase
+              .from('transactions')
+              .insert([formData]);
+
+            if (error) throw error;
+
+            showNotification('Transaction saved successfully!', 'success');
+            form.reset();
+            setDefaultDate();
+            
+            // Reload data
+            await initializeData();
+            
+          } catch (error) {
+            console.error('Error saving transaction:', error);
+            showNotification('Error saving transaction', 'error');
+          }
+        });
+
+        document.getElementById('clear-form').addEventListener('click', function() {
+          form.reset();
+          setDefaultDate();
+          showNotification('Form cleared', 'success');
         });
       }
 
-      async function handleFormSubmission() {
-        // Get project name based on project type
-        const projectType = document.getElementById('entry-project-type').value;
-        let projectName = '';
-
-        if (projectType === 'existing') {
-          projectName = document.getElementById('entry-project-select').value;
-        } else {
-          projectName = document.getElementById('entry-project-new').value;
-        }
-
-        // Get the detailed description
-        const detailedDescription = document.getElementById('entry-description').value;
-
-        // Combine project name and detailed description for the transaction description
-        const fullDescription = projectName + (detailedDescription ? `: ${detailedDescription}` : '');
-
-        const formData = {
-          date: document.getElementById('entry-date').value,
-          description: fullDescription,
-          type: document.getElementById('entry-payment-type').value,
-          paid_to: document.getElementById('entry-paid-to').value,
-          received: parseFloat(document.getElementById('entry-received').value) || 0,
-          paid: parseFloat(document.getElementById('entry-paid').value) || 0
-        };
-        
-        // FIX: Calculate cash in hand for this transaction only
-        formData.cash_in_hand = formData.received - formData.paid;
-        
-        try {
-          const { data, error } = await supabase
-            .from('transactions')
-            .insert([formData])
-            .select();
-          
-          if (error) {
-            console.error('Error saving transaction:', error);
-            showNotification('Error saving transaction', 'error');
-            return;
-          }
-          
-          showNotification('Transaction saved successfully!', 'success');
-          
-          // Reset form
-          document.getElementById('entry-form').reset();
-          document.getElementById('entry-date').value = new Date().toISOString().split('T')[0];
-          
-          // Reload data
-          await initializeData();
-          
-        } catch (error) {
-          console.error('Network error:', error);
-          showNotification('Network error occurred', 'error');
-        }
-      }
-
-      // Enhanced project search with advanced filtering
+      // Project search functionality
       function setupProjectSearch() {
         const projectSearch = document.getElementById('project-search');
         const projectDetails = document.getElementById('project-details');
-        const projectExportCSV = document.getElementById('project-export-csv');
-        const projectExportPDF = document.getElementById('project-export-pdf');
         
-        // Advanced search with debouncing
-        let searchTimeout;
-        projectSearch.addEventListener('input', (e) => {
-          clearTimeout(searchTimeout);
-          searchTimeout = setTimeout(() => {
-            const searchTerm = e.target.value.toLowerCase();
-            if (searchTerm.length > 0) {
-              const matchingTransactions = transactions.filter(t => 
-                t.description.toLowerCase().includes(searchTerm) ||
-                t.type.toLowerCase().includes(searchTerm) ||
-                (t.paidTo && t.paidTo.toLowerCase().includes(searchTerm))
-              );
-              
-              if (matchingTransactions.length > 0) {
-                displayProjectDetails(searchTerm, matchingTransactions);
-                projectDetails.classList.remove('hidden');
-                showNotification(`Found ${matchingTransactions.length} matching transactions`, 'success');
-              } else {
-                projectDetails.classList.add('hidden');
-                showNotification('No matching transactions found', 'info');
-              }
+        projectSearch.addEventListener('input', function() {
+          const searchTerm = this.value.trim();
+          
+          if (searchTerm.length > 0) {
+            const projectTransactions = transactions.filter(t => 
+              t.description.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            
+            if (projectTransactions.length > 0) {
+              displayProjectDetails(searchTerm, projectTransactions);
+              projectDetails.classList.remove('hidden');
             } else {
               projectDetails.classList.add('hidden');
             }
-          }, 300);
-        });
-
-        // Add keyboard shortcuts
-        projectSearch.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') {
-            projectSearch.value = '';
+          } else {
             projectDetails.classList.add('hidden');
           }
         });
-        
-        // Export CSV
-        projectExportCSV.addEventListener('click', () => {
-          if (currentProjectData.length === 0) {
-            showNotification('No project data to export', 'error');
-            return;
-          }
-          exportToCSV(currentProjectData, `project-${document.getElementById('project-title').textContent}-transactions`);
+
+        // Project export functionality
+        document.getElementById('project-export-csv').addEventListener('click', () => {
+          exportToCSV(currentProjectData, `project_${document.getElementById('project-title').textContent}`);
         });
-        
-        // Export PDF
-        projectExportPDF.addEventListener('click', () => {
-          if (currentProjectData.length === 0) {
-            showNotification('No project data to export', 'error');
-            return;
-          }
-          exportToPDF(currentProjectData, `project-${document.getElementById('project-title').textContent}-transactions`);
+
+        document.getElementById('project-export-pdf').addEventListener('click', () => {
+          exportToPDF(currentProjectData, `project_${document.getElementById('project-title').textContent}`);
         });
       }
 
@@ -2606,6 +2607,67 @@
         document.getElementById('analytics-report').addEventListener('click', generateAnalyticsReport);
       }
 
+      // CSV Export
+      function exportToCSV(data, filename = 'transactions') {
+        const headers = ['Date', 'Description', 'Type', 'Paid To', 'Received', 'Paid', 'Cash'];
+        const csvContent = [
+          headers.join(','),
+          ...data.map(t => [
+            formatDate(t.date),
+            `"${t.description}"`,
+            `"${t.type}"`,
+            `"${t.paidTo || ''}"`,
+            t.received,
+            t.paid,
+            t.cashInHand
+          ].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('CSV exported successfully!', 'success');
+      }
+
+      // PDF Export
+      function exportToPDF(data, filename = 'transactions') {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(20);
+        doc.text('Ashroy Architects & Engineers', 20, 20);
+        doc.setFontSize(16);
+        doc.text('Financial Transaction Report', 20, 30);
+        doc.setFontSize(12);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 40);
+        
+        const tableData = data.map(t => [
+          formatDate(t.date),
+          t.description,
+          t.type,
+          t.paidTo || '-',
+          formatCurrency(t.received),
+          formatCurrency(t.paid),
+          formatCurrency(t.cashInHand)
+        ]);
+        
+        doc.autoTable({
+          head: [['Date', 'Description', 'Type', 'Paid To', 'Received', 'Paid', 'Cash']],
+          body: tableData,
+          startY: 50,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [26, 86, 219] }
+        });
+        
+        doc.save(`${filename}.pdf`);
+        showNotification('PDF exported successfully!', 'success');
+      }
+
       // Data backup functionality
       function backupData() {
         const backupData = {
@@ -2773,148 +2835,105 @@
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div class="bg-gradient-to-r from-green-100 to-green-200 p-4 rounded-lg">
-                <div class="text-green-800 font-semibold">Total Revenue</div>
-                <div class="text-2xl font-bold text-green-900">${formatCurrency(analytics.summary.totalReceived)}</div>
+              <div class="bg-gradient-to-r from-green-400 to-green-600 text-white p-4 rounded-lg">
+                <h3 class="text-sm font-medium">Total Revenue</h3>
+                <p class="text-2xl font-bold">${formatCurrency(analytics.summary.totalReceived)}</p>
               </div>
-              <div class="bg-gradient-to-r from-red-100 to-red-200 p-4 rounded-lg">
-                <div class="text-red-800 font-semibold">Total Expenses</div>
-                <div class="text-2xl font-bold text-red-900">${formatCurrency(analytics.summary.totalPaid)}</div>
+              <div class="bg-gradient-to-r from-red-400 to-red-600 text-white p-4 rounded-lg">
+                <h3 class="text-sm font-medium">Total Expenses</h3>
+                <p class="text-2xl font-bold">${formatCurrency(analytics.summary.totalPaid)}</p>
               </div>
-              <div class="bg-gradient-to-r from-blue-100 to-blue-200 p-4 rounded-lg">
-                <div class="text-blue-800 font-semibold">Net Profit</div>
-                <div class="text-2xl font-bold text-blue-900">${formatCurrency(analytics.summary.netProfit)}</div>
+              <div class="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 rounded-lg">
+                <h3 class="text-sm font-medium">Net Profit</h3>
+                <p class="text-2xl font-bold">${formatCurrency(analytics.summary.netProfit)}</p>
               </div>
-              <div class="bg-gradient-to-r from-purple-100 to-purple-200 p-4 rounded-lg">
-                <div class="text-purple-800 font-semibold">Profit Margin</div>
-                <div class="text-2xl font-bold text-purple-900">${analytics.summary.profitMargin.toFixed(1)}%</div>
+              <div class="bg-gradient-to-r from-purple-400 to-purple-600 text-white p-4 rounded-lg">
+                <h3 class="text-sm font-medium">Profit Margin</h3>
+                <p class="text-2xl font-bold">${analytics.summary.profitMargin.toFixed(1)}%</p>
               </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-lg font-bold mb-4">Top Projects by Profit</h3>
-                ${analytics.topProjects.map(project => `
-                  <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span class="font-medium">${project.name}</span>
-                    <span class="text-green-600 font-bold">${formatCurrency(project.profit)}</span>
-                  </div>
-                `).join('')}
+                <h3 class="text-lg font-bold mb-4">Top Projects</h3>
+                <div class="space-y-2">
+                  ${analytics.topProjects.map(project => `
+                    <div class="flex justify-between items-center p-2 bg-white rounded">
+                      <span class="font-medium">${project.name}</span>
+                      <span class="text-green-600 font-bold">${formatCurrency(project.profit)}</span>
+                    </div>
+                  `).join('')}
+                </div>
               </div>
               
               <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-lg font-bold mb-4">Payment Type Analysis</h3>
-                ${Object.entries(analytics.paymentTypes).map(([type, data]) => `
-                  <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span class="font-medium">${type}</span>
-                    <span class="text-blue-600 font-bold">${formatCurrency(data.received)}</span>
-                  </div>
-                `).join('')}
+                <h3 class="text-lg font-bold mb-4">Key Insights</h3>
+                <div class="space-y-2">
+                  ${analytics.insights.map(insight => `
+                    <div class="p-2 rounded ${
+                      insight.type === 'positive' ? 'bg-green-100 text-green-800' :
+                      insight.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-blue-100 text-blue-800'
+                    }">
+                      <p class="text-sm">${insight.text}</p>
+                    </div>
+                  `).join('')}
+                </div>
               </div>
             </div>
 
-            <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-lg">
-              <h3 class="text-lg font-semibold mb-3">Business Insights</h3>
-              ${analytics.insights.map(insight => `
-                <div class="flex items-start gap-2 mb-2">
-                  <i class="fas ${insight.type === 'positive' ? 'fa-check-circle text-green-500' : 
-                    insight.type === 'warning' ? 'fa-exclamation-triangle text-yellow-500' : 
-                    'fa-info-circle text-blue-500'} mt-1"></i>
-                  <span class="text-gray-700">${insight.text}</span>
-                </div>
-              `).join('')}
-            </div>
-
-            <div class="flex justify-center mt-6">
-              <button class="btn btn-primary" onclick="window.print()">
-                <i class="fas fa-print"></i> Print Report
+            <div class="text-center">
+              <button class="btn btn-primary" onclick="this.closest('.fixed').remove()">
+                <i class="fas fa-check"></i> Close Report
               </button>
             </div>
           </div>
         `;
         
         document.body.appendChild(modal);
-        showNotification('Analytics report generated successfully!', 'success');
+        showNotification('Advanced analytics report generated!', 'success');
       }
 
-      function exportToCSV(data, filenamePrefix = 'financial-report') {
-        const headers = ['Date', 'Description', 'Payment Type', 'Paid To', 'Received', 'Paid', 'Cash in Hand'];
-        const csvContent = [
-          headers.join(','),
-          ...data.map(t => [
-            formatDate(t.date),
-            `"${t.description}"`,
-            t.type,
-            t.paidTo || '',
-            t.received,
-            t.paid,
-            t.cashInHand
-          ].join(','))
-        ].join('\n');
-        
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filenamePrefix}-${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        
-        showNotification('CSV file downloaded successfully', 'success');
-      }
-
-      function exportToPDF(data, filenamePrefix = 'financial-report') {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        // Add title
-        doc.setFontSize(20);
-        doc.text('Ashroy Architects & Engineers', 20, 20);
-        doc.setFontSize(16);
-        doc.text('Financial Report', 20, 30);
-        doc.setFontSize(12);
-        doc.text(`Generated on: ${formatDate(new Date())}`, 20, 40);
-        
-        // Prepare table data
-        const tableData = data.map(t => [
-          formatDate(t.date),
-          t.description,
-          t.type,
-          t.paidTo || '',
-          formatCurrency(t.received, false),
-          formatCurrency(t.paid, false),
-          formatCurrency(t.cashInHand, false)
-        ]);
-        
-        // Add table
-        doc.autoTable({
-          head: [['Date', 'Description', 'Type', 'Paid To', 'Received', 'Paid', 'Cash']],
-          body: tableData,
-          startY: 50,
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [26, 86, 219] }
-        });
-        
-        doc.save(`${filenamePrefix}-${new Date().toISOString().split('T')[0]}.pdf`);
-        showNotification('PDF file downloaded successfully', 'success');
-      }
-
-      // Enhanced chart mode buttons
+      // Chart mode buttons
       function setupChartModeButtons() {
         document.querySelectorAll('.chart-mode-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            updateChart(btn.dataset.mode);
+          btn.addEventListener('click', function() {
+            const mode = this.dataset.mode;
+            updateChart(mode);
           });
         });
       }
 
-      // Initialize data and UI
+      // Initialize data
       async function initializeData() {
         transactions = await loadTransactions();
         updateKPIs();
         populateYearFilter();
-        updateChart();
+        populateSummaryFilters();
         populateProjectLists();
+        updateChart();
+      }
+
+      function populateSummaryFilters() {
+        const summaryYear = document.getElementById('summary-year');
+        const years = [...new Set(transactions.map(t => t.date.getFullYear()))].sort((a, b) => b - a);
+        
+        if (years.length === 0) {
+          years.push(new Date().getFullYear());
+        }
+        
+        summaryYear.innerHTML = years.map(y => 
+          `<option value="${y}" ${y === new Date().getFullYear() ? 'selected' : ''}>${y}</option>`
+        ).join('');
+        
+        // Set current month as default
+        const currentMonth = new Date().getMonth();
+        document.getElementById('summary-month').value = currentMonth;
+        
+        // Add event listeners
+        summaryYear.addEventListener('change', updateSummarySection);
+        document.getElementById('summary-month').addEventListener('change', updateSummarySection);
+        document.getElementById('refresh-summary').addEventListener('click', updateSummarySection);
       }
 
       function populateProjectLists() {
@@ -2983,3 +3002,4 @@
   </script>
 </body>
 </html>
+
