@@ -1003,6 +1003,21 @@
       font-size: 13px;
       font-weight: 600;
     }
+
+    /* PDF Export Specific Styles */
+    .pdf-export-notice {
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      border-left: 4px solid #3b82f6;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    
+    [data-theme="dark"] .pdf-export-notice {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+      border-left-color: #60a5fa;
+    }
   </style>
 </head>
 <body class="antialiased min-h-screen" data-theme="light">
@@ -1523,6 +1538,11 @@
             </div>
           </div>
           
+          <!-- PDF Export Notice -->
+          <div class="pdf-export-notice mb-6">
+            <p><i class="fas fa-info-circle mr-2"></i> <strong>PDF Export Tip:</strong> For better currency symbol support in PDF, we recommend using the CSV export option. The PDF will show amounts in BDT format with proper number formatting.</p>
+          </div>
+          
           <!-- Report Narrative -->
           <div class="narrative-summary mb-6">
             <div class="narrative-title">Report Insights</div>
@@ -1577,23 +1597,26 @@
           </button>
         </div>
 
+        <!-- PDF Export Tips -->
         <div class="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
-          <h3 class="text-lg font-semibold mb-4">Export Options</h3>
+          <h3 class="text-lg font-semibold mb-4">Export Tips for Best Results</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="text-left">
-              <h4 class="font-medium text-blue-600 mb-2">CSV Format</h4>
+              <h4 class="font-medium text-blue-600 mb-2">For PDF Reports</h4>
               <ul class="text-sm text-gray-600 space-y-1">
-                <li>• Spreadsheet compatible</li>
-                <li>• Easy data manipulation</li>
-                <li>• Lightweight file size</li>
+                <li>• Use Chrome/Edge for best PDF generation</li>
+                <li>• Currency amounts are properly formatted</li>
+                <li>• Tables include automatic totals calculation</li>
+                <li>• Professional layout with company branding</li>
               </ul>
             </div>
             <div class="text-left">
-              <h4 class="font-medium text-purple-600 mb-2">PDF Format</h4>
+              <h4 class="font-medium text-purple-600 mb-2">For Data Analysis</h4>
               <ul class="text-sm text-gray-600 space-y-1">
-                <li>• Professional presentation</li>
-                <li>• Print-ready format</li>
-                <li>• Secure document sharing</li>
+                <li>• CSV format for spreadsheet software</li>
+                <li>• Full data preservation</li>
+                <li>• Compatible with Excel, Google Sheets</li>
+                <li>• Lightweight file size</li>
               </ul>
             </div>
           </div>
@@ -1685,17 +1708,33 @@
         }, 1000);
       }
 
-      // Enhanced format functions
-      function formatCurrency(amount, withSymbol = true) {
-        const formattedNumber = new Intl.NumberFormat('en-US').format(Math.abs(amount));
+      // Enhanced format functions with better number formatting
+      function formatCurrency(amount, withSymbol = true, forPDF = false) {
+        if (isNaN(amount) || amount === null || amount === undefined) {
+          amount = 0;
+        }
+        
+        // Format number with commas for thousands
+        const formattedNumber = new Intl.NumberFormat('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(Math.abs(amount));
+        
         if (withSymbol) {
+          if (forPDF) {
+            // For PDF, use simpler format without special characters
+            return `BDT ${formattedNumber}`;
+          }
           return `৳${formattedNumber}`;
         }
         return formattedNumber;
       }
       
-      function formatDate(date) {
+      function formatDate(date, forPDF = false) {
         if (!date || !(date instanceof Date)) return '';
+        if (forPDF) {
+          return date.toLocaleDateString('en-GB'); // DD/MM/YYYY format for PDF
+        }
         return new Intl.DateTimeFormat('en-GB', { 
           day: '2-digit', 
           month: 'short', 
@@ -1753,16 +1792,16 @@
             return [];
           }
 
-          // FIX: Compute cashInHand as received - paid for each transaction
+          // Compute cashInHand as received - paid for each transaction
           return data.map(t => ({
             id: t.id,
             date: new Date(t.date),
             description: t.description,
             type: t.type,
             paidTo: t.paid_to,
-            received: t.received,
-            paid: t.paid,
-            cashInHand: t.received - t.paid  // Calculate per-transaction cash
+            received: t.received || 0,
+            paid: t.paid || 0,
+            cashInHand: (t.received || 0) - (t.paid || 0)
           }));
         } catch (error) {
           console.error('Network error:', error);
@@ -2350,15 +2389,42 @@
         form.addEventListener('submit', async function(e) {
           e.preventDefault();
           
+          // Validate form
+          const date = document.getElementById('entry-date').value;
+          const projectName = projectTypeSelect.value === 'new' ? 
+            document.getElementById('entry-project-new').value : 
+            document.getElementById('entry-project-select').value;
+          const type = document.getElementById('entry-type').value;
+          const received = parseFloat(document.getElementById('entry-received').value) || 0;
+          const paid = parseFloat(document.getElementById('entry-paid').value) || 0;
+          
+          if (!date) {
+            showNotification('Please select a transaction date', 'error');
+            return;
+          }
+          
+          if (!projectName.trim()) {
+            showNotification('Please enter or select a project name', 'error');
+            return;
+          }
+          
+          if (!type) {
+            showNotification('Please select a payment type', 'error');
+            return;
+          }
+          
+          if (received === 0 && paid === 0) {
+            showNotification('Please enter either received or paid amount', 'error');
+            return;
+          }
+          
           const formData = {
-            date: document.getElementById('entry-date').value,
-            description: projectTypeSelect.value === 'new' ? 
-              document.getElementById('entry-project-new').value : 
-              document.getElementById('entry-project-select').value,
-            type: document.getElementById('entry-type').value,
+            date: date,
+            description: projectName,
+            type: type,
             paid_to: document.getElementById('entry-paid-to').value || null,
-            received: parseFloat(document.getElementById('entry-received').value) || 0,
-            paid: parseFloat(document.getElementById('entry-paid').value) || 0
+            received: received,
+            paid: paid
           };
 
           try {
@@ -2432,7 +2498,7 @@
         const designBill = projectTransactions.filter(t => t.type === 'Design Bill').reduce((s, t) => s + t.received, 0);
         const siteVisit = projectTransactions.filter(t => t.type === 'Site Visit').reduce((s, t) => s + t.received, 0);
         
-        // FIX: Calculate cash in hand ONLY for this project
+        // Calculate cash in hand ONLY for this project
         const cashInHand = totalReceived - totalPaid;
         
         document.getElementById('project-total-received').textContent = formatCurrency(totalReceived);
@@ -2447,7 +2513,7 @@
         // Update project transactions table
         const tbody = document.getElementById('project-transactions-body');
         
-        // FIX: Calculate cumulative cash for each transaction within the project
+        // Calculate cumulative cash for each transaction within the project
         let runningCash = 0;
         tbody.innerHTML = projectTransactions.map(t => {
           runningCash += t.received - t.paid;
@@ -2515,7 +2581,7 @@
         const fromDate = new Date(document.getElementById('report-from').value);
         const toDate = new Date(document.getElementById('report-to').value);
         
-        if (!fromDate || !toDate) {
+        if (!fromDate || !toDate || isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
           showNotification('Please select both from and to dates', 'error');
           return;
         }
@@ -2594,7 +2660,7 @@
         document.getElementById('report-narrative').innerHTML = narrative;
       }
 
-      // Enhanced export functionality
+      // Enhanced export functionality with improved PDF generation
       function setupExportFunctionality() {
         document.getElementById('download-csv').addEventListener('click', () => exportToCSV(currentReportData));
         document.getElementById('download-pdf').addEventListener('click', () => exportToPDF(currentReportData));
@@ -2623,49 +2689,169 @@
           ].join(','))
         ].join('\n');
         
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${filename}.csv`;
+        a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
         
         showNotification('CSV exported successfully!', 'success');
       }
 
-      // PDF Export
+      // PDF Export with improved currency formatting
       function exportToPDF(data, filename = 'transactions') {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation for better table display
         
-        doc.setFontSize(20);
-        doc.text('Ashroy Architects & Engineers', 20, 20);
-        doc.setFontSize(16);
-        doc.text('Financial Transaction Report', 20, 30);
-        doc.setFontSize(12);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 40);
-        
-        const tableData = data.map(t => [
-          formatDate(t.date),
-          t.description,
-          t.type,
-          t.paidTo || '-',
-          formatCurrency(t.received),
-          formatCurrency(t.paid),
-          formatCurrency(t.cashInHand)
-        ]);
-        
-        doc.autoTable({
-          head: [['Date', 'Description', 'Type', 'Paid To', 'Received', 'Paid', 'Cash']],
-          body: tableData,
-          startY: 50,
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [26, 86, 219] }
+        // Set document properties
+        doc.setProperties({
+          title: `Ashroy Architects Financial Report - ${filename}`,
+          subject: 'Financial Transactions Report',
+          author: 'Ashroy Architects Dashboard',
+          keywords: 'financial, transactions, report',
+          creator: 'Ashroy Architects Financial Dashboard v3.0'
         });
         
-        doc.save(`${filename}.pdf`);
-        showNotification('PDF exported successfully!', 'success');
+        // Add header with logo and title
+        doc.setFontSize(24);
+        doc.setTextColor(26, 86, 219); // Primary blue color
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ashroy Architects & Engineers', 105, 20, null, null, 'center');
+        
+        doc.setFontSize(18);
+        doc.setTextColor(14, 159, 110); // Secondary green color
+        doc.setFont('helvetica', 'normal');
+        doc.text('Financial Transaction Report', 105, 30, null, null, 'center');
+        
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`, 105, 38, null, null, 'center');
+        
+        doc.setFontSize(10);
+        doc.text(`Report: ${filename} | Total Transactions: ${data.length}`, 105, 45, null, null, 'center');
+        
+        // Add a horizontal line
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, 50, 280, 50);
+        
+        // Prepare table data with proper formatting
+        const tableData = data.map(t => [
+          formatDate(t.date, true),
+          t.description.length > 30 ? t.description.substring(0, 27) + '...' : t.description,
+          t.type,
+          t.paidTo || '-',
+          formatCurrency(t.received, false, true),
+          formatCurrency(t.paid, false, true),
+          formatCurrency(t.cashInHand, false, true)
+        ]);
+        
+        // Calculate totals for footer
+        const totalReceived = data.reduce((s, t) => s + t.received, 0);
+        const totalPaid = data.reduce((s, t) => s + t.paid, 0);
+        const totalCash = data.reduce((s, t) => s + t.cashInHand, 0);
+        
+        // Create the table
+        doc.autoTable({
+          head: [['Date', 'Description', 'Type', 'Paid To', 'Received (BDT)', 'Paid (BDT)', 'Cash (BDT)']],
+          body: tableData,
+          startY: 55,
+          margin: { top: 55 },
+          styles: { 
+            fontSize: 9,
+            cellPadding: 3,
+            overflow: 'linebreak',
+            lineColor: [220, 220, 220],
+            lineWidth: 0.1
+          },
+          headStyles: { 
+            fillColor: [26, 86, 219],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 10
+          },
+          alternateRowStyles: {
+            fillColor: [245, 245, 245]
+          },
+          columnStyles: {
+            0: { cellWidth: 25, halign: 'center' },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 25, halign: 'center' },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 30, halign: 'right' },
+            5: { cellWidth: 30, halign: 'right' },
+            6: { cellWidth: 30, halign: 'right' }
+          },
+          didDrawPage: function (data) {
+            // Footer with totals
+            if (data.pageNumber === data.pageCount) {
+              const finalY = data.cursor.y + 10;
+              
+              // Add totals row
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(26, 86, 219);
+              doc.text('TOTALS:', 15, finalY);
+              
+              doc.setTextColor(14, 159, 110);
+              doc.text(formatCurrency(totalReceived, true, true), 185, finalY, null, null, 'right');
+              
+              doc.setTextColor(240, 82, 82);
+              doc.text(formatCurrency(totalPaid, true, true), 215, finalY, null, null, 'right');
+              
+              doc.setTextColor(59, 130, 246);
+              doc.text(formatCurrency(totalCash, true, true), 245, finalY, null, null, 'right');
+              
+              // Add page numbers
+              doc.setFontSize(8);
+              doc.setTextColor(100, 100, 100);
+              doc.text(
+                `Page ${data.pageNumber} of ${data.pageCount}`,
+                doc.internal.pageSize.width / 2,
+                doc.internal.pageSize.height - 10,
+                null,
+                null,
+                'center'
+              );
+            }
+          }
+        });
+        
+        // Add a summary section if there's space
+        const finalY = doc.lastAutoTable.finalY || 100;
+        if (finalY < 180) {
+          doc.setFontSize(12);
+          doc.setTextColor(26, 86, 219);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Report Summary', 15, finalY + 15);
+          
+          doc.setFontSize(10);
+          doc.setTextColor(80, 80, 80);
+          doc.setFont('helvetica', 'normal');
+          
+          const summaryLines = [
+            `• Total Transactions: ${data.length}`,
+            `• Total Received: ${formatCurrency(totalReceived, true, true)}`,
+            `• Total Paid: ${formatCurrency(totalPaid, true, true)}`,
+            `• Net Cash Flow: ${formatCurrency(totalCash, true, true)}`,
+            `• Average Transaction: ${formatCurrency(totalReceived / data.length, true, true)}`
+          ];
+          
+          summaryLines.forEach((line, index) => {
+            doc.text(line, 15, finalY + 25 + (index * 5));
+          });
+        }
+        
+        // Save the PDF
+        doc.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
+        showNotification('PDF exported successfully with improved formatting!', 'success');
       }
 
       // Data backup functionality
@@ -3002,4 +3188,3 @@
   </script>
 </body>
 </html>
-
