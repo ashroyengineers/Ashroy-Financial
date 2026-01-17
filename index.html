@@ -2371,6 +2371,9 @@
 
       // Enhanced form handling
       async function setupFormHandling() {
+        // Ensure form is in add mode initially
+        resetFormToAddMode();
+        
         const form = document.getElementById('entry-form');
         const projectTypeSelect = document.getElementById('entry-project-type');
         const existingProjectContainer = document.getElementById('existing-project-container');
@@ -2389,7 +2392,14 @@
         form.addEventListener('submit', async function(e) {
           e.preventDefault();
           
-          // Validate form
+          // Check if we're in edit mode
+          const editId = document.getElementById('edit-id').value;
+          if (editId) {
+            await updateTransaction();
+            return;
+          }
+          
+          // Otherwise, add new transaction
           const date = document.getElementById('entry-date').value;
           const projectName = projectTypeSelect.value === 'new' ? 
             document.getElementById('entry-project-new').value : 
@@ -2435,23 +2445,178 @@
             if (error) throw error;
 
             showNotification('Transaction saved successfully!', 'success');
-            form.reset();
-            setDefaultDate();
+            resetFormToAddMode();
             
             // Reload data
             await initializeData();
             
           } catch (error) {
             console.error('Error saving transaction:', error);
-            showNotification('Error saving transaction', 'error');
+            showNotification('Error saving transaction: ' + error.message, 'error');
           }
         });
 
         document.getElementById('clear-form').addEventListener('click', function() {
-          form.reset();
-          setDefaultDate();
+          resetFormToAddMode();
           showNotification('Form cleared', 'success');
         });
+      }
+
+      // Global functions for inline event handlers - UPDATED WITH ACTUAL FUNCTIONALITY
+      window.editTransaction = async function(id) {
+        // Find the transaction to edit
+        const transaction = transactions.find(t => t.id == id);
+        if (!transaction) {
+          showNotification('Transaction not found', 'error');
+          return;
+        }
+
+        // Populate the form with transaction data
+        document.getElementById('edit-id').value = transaction.id;
+        document.getElementById('entry-date').value = transaction.date.toISOString().split('T')[0];
+        
+        // Check if project exists in our list
+        const projects = [...new Set(transactions.map(t => t.description))];
+        if (projects.includes(transaction.description)) {
+          document.getElementById('entry-project-type').value = 'existing';
+          document.getElementById('entry-project-select').value = transaction.description;
+        } else {
+          document.getElementById('entry-project-type').value = 'new';
+          document.getElementById('entry-project-new').value = transaction.description;
+        }
+        
+        // Trigger the project type change to show/hide appropriate fields
+        document.getElementById('entry-project-type').dispatchEvent(new Event('change'));
+        
+        document.getElementById('entry-type').value = transaction.type;
+        document.getElementById('entry-paid-to').value = transaction.paidTo || '';
+        document.getElementById('entry-received').value = transaction.received;
+        document.getElementById('entry-paid').value = transaction.paid;
+
+        // Change form button text
+        const submitButton = document.querySelector('#entry-form button[type="submit"]');
+        submitButton.innerHTML = '<i class="fas fa-save"></i> Update Transaction';
+        
+        // Switch to entry section
+        document.getElementById('nav-entry').click();
+        
+        showNotification('Transaction loaded for editing', 'info');
+      };
+
+      window.deleteTransaction = async function(id) {
+        if (!confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+          return;
+        }
+
+        try {
+          const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', id);
+
+          if (error) throw error;
+
+          showNotification('Transaction deleted successfully!', 'success');
+          
+          // Reload all data
+          await initializeData();
+          
+          // If we're in project view, refresh it
+          const currentProjectName = document.getElementById('project-title').textContent;
+          if (currentProjectName && currentProjectName !== 'Project Name') {
+            const projectTransactions = transactions.filter(t => t.description === currentProjectName);
+            displayProjectDetails(currentProjectName, projectTransactions);
+          }
+          
+        } catch (error) {
+          console.error('Error deleting transaction:', error);
+          showNotification('Error deleting transaction: ' + error.message, 'error');
+        }
+      };
+
+      // Update transaction function
+      async function updateTransaction() {
+        const id = document.getElementById('edit-id').value;
+        if (!id) {
+          showNotification('No transaction selected for update', 'error');
+          return;
+        }
+        
+        const date = document.getElementById('entry-date').value;
+        const projectType = document.getElementById('entry-project-type').value;
+        const projectName = projectType === 'new' ? 
+          document.getElementById('entry-project-new').value : 
+          document.getElementById('entry-project-select').value;
+        const type = document.getElementById('entry-type').value;
+        const received = parseFloat(document.getElementById('entry-received').value) || 0;
+        const paid = parseFloat(document.getElementById('entry-paid').value) || 0;
+        const paidTo = document.getElementById('entry-paid-to').value;
+        
+        // Validation
+        if (!date) {
+          showNotification('Please select a transaction date', 'error');
+          return;
+        }
+        
+        if (!projectName.trim()) {
+          showNotification('Please enter or select a project name', 'error');
+          return;
+        }
+        
+        if (!type) {
+          showNotification('Please select a payment type', 'error');
+          return;
+        }
+        
+        if (received === 0 && paid === 0) {
+          showNotification('Please enter either received or paid amount', 'error');
+          return;
+        }
+        
+        const formData = {
+          date: date,
+          description: projectName,
+          type: type,
+          paid_to: paidTo || null,
+          received: received,
+          paid: paid
+        };
+        
+        try {
+          const { error } = await supabase
+            .from('transactions')
+            .update(formData)
+            .eq('id', id);
+          
+          if (error) throw error;
+          
+          showNotification('Transaction updated successfully!', 'success');
+          
+          // Reset form to add mode
+          resetFormToAddMode();
+          
+          // Reload data
+          await initializeData();
+          
+        } catch (error) {
+          console.error('Error updating transaction:', error);
+          showNotification('Error updating transaction: ' + error.message, 'error');
+        }
+      }
+
+      // Reset form to add mode
+      function resetFormToAddMode() {
+        const form = document.getElementById('entry-form');
+        form.reset();
+        setDefaultDate();
+        document.getElementById('edit-id').value = '';
+        
+        const submitButton = document.querySelector('#entry-form button[type="submit"]');
+        submitButton.innerHTML = '<i class="fas fa-save"></i> Save Transaction';
+        
+        // Reset project type to existing
+        document.getElementById('entry-project-type').value = 'existing';
+        document.getElementById('entry-project-type').dispatchEvent(new Event('change'));
       }
 
       // Project search functionality
@@ -3170,17 +3335,6 @@
         
         showNotification('Dashboard loaded successfully!', 'success');
       }
-
-      // Global functions for inline event handlers
-      window.editTransaction = function(id) {
-        showNotification('Edit functionality coming soon!', 'info');
-      };
-
-      window.deleteTransaction = function(id) {
-        if (confirm('Are you sure you want to delete this transaction?')) {
-          showNotification('Delete functionality coming soon!', 'info');
-        }
-      };
 
       // Start the application
       initialize();
